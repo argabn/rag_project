@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Dashboard + Chatbox</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-alt: #eef4ff;
+      --border: #dfe7f5;
+      --text: #1d2736;
+      --muted: #60708a;
+      --primary: #2b6ef6;
+      --primary-dark: #1f57d9;
+      --success: #179b68;
+      --warning: #f59f0b;
+      --danger: #d94f4f;
+      --shadow: 0 12px 30px rgba(23, 42, 72, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #edf3ff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .dashboard {
+      flex: 1.15;
+      padding: 24px;
+      background: linear-gradient(180deg, #f9fbff 0%, #ffffff 100%);
+    }
+
+    .chatbox {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      min-width: 360px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eefaf4;
+      color: var(--success);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(23, 155, 104, 0.2);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 6px rgba(23, 155, 104, 0.12);
+    }
+
+    .status-dot.warning {
+      background: var(--warning);
+      box-shadow: 0 0 0 6px rgba(245, 159, 11, 0.12);
+    }
+
+    .status-dot.error {
+      background: var(--danger);
+      box-shadow: 0 0 0 6px rgba(217, 79, 79, 0.12);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 1.9rem;
+      font-weight: 700;
+    }
+
+    .chart-box {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .chart-box h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .chart-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 50px;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.92rem;
+    }
+
+    .bar-shell {
+      height: 12px;
+      background: rgba(43, 110, 246, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(43, 110, 246, 0.08);
+    }
+
+    .bar-fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary) 0%, #69a1ff 100%);
+    }
+
+    .empty-state {
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 12px;
+    }
+
+    .chat-log {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #f9fbff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      overflow-y: auto;
+      min-height: 320px;
+      margin-bottom: 16px;
+    }
+
+    .message {
+      max-width: 90%;
+      padding: 12px 14px;
+      border-radius: 16px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #dff0ff 0%, #cfe4ff 100%);
+      color: #14305d;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.system {
+      align-self: center;
+      background: #fff5db;
+      border: 1px solid #f1df9c;
+      color: #724d00;
+      max-width: 100%;
+    }
+
+    .source-box {
+      margin-top: 8px;
+      font-size: 0.77rem;
+      color: var(--muted);
+      border-top: 1px dashed var(--border);
+      padding-top: 8px;
+    }
+
+    .composer {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      background: #fff;
+    }
+
+    input[type="text"]:focus {
+      border-color: rgba(43, 110, 246, 0.6);
+      box-shadow: 0 0 0 4px rgba(43, 110, 246, 0.12);
+    }
+
+    button {
+      border: none;
+      padding: 0 18px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 110px;
+      transition: transform 0.15s ease, opacity 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.7; cursor: wait; }
+
+    @media (max-width: 900px) {
+      .app { flex-direction: column; }
+      .chatbox { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel dashboard">
+      <div class="panel-header">
+        <h2>Dashboard</h2>
+        <span id="server-status" class="status-pill"><span class="status-dot warning"></span>Memeriksa server...</span>
+      </div>
+
+      <div class="stats-grid" id="stats-cards">
+        <div class="stat-card">
+          <div class="stat-label">Total dokumen</div>
+          <div class="stat-value" id="total-documents">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sumber aktif</div>
+          <div class="stat-value" id="total-sources">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Kategori</div>
+          <div class="stat-value" id="source-type-label">-</div>
+        </div>
+      </div>
+
+      <div class="chart-box">
+        <h3>Distribusi sumber data</h3>
+        <div id="stats-output" class="chart-list">
+          <div class="empty-state">Memuat statistik...</div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel chatbox">
+      <div class="panel-header">
+        <h2>Chatbox</h2>
+      </div>
+
+      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+      <div class="composer">
+        <input id="question-input" type="text" placeholder="Tanyakan sesuatu tentang dokumen yang sudah di-ingest..." maxlength="2000" />
+        <button id="send-button" type="button">Kirim</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:8000/api";
+    const statusEl = document.getElementById("server-status");
+    const statsOutput = document.getElementById("stats-output");
+    const cards = {
+      totalDocuments: document.getElementById("total-documents"),
+      totalSources: document.getElementById("total-sources"),
+      sourceTypeLabel: document.getElementById("source-type-label"),
+    };
+
+    function setStatus(kind, text) {
+      const dot = statusEl.querySelector(".status-dot");
+      dot.className = "status-dot";
+      if (kind === "success") dot.classList.add("success");
+      if (kind === "warning") dot.classList.add("warning");
+      if (kind === "error") dot.classList.add("error");
+      statusEl.innerHTML = `${dot.outerHTML} ${text}`;
+    }
+
+    function appendMessage(text, type = "bot") {
+      const log = document.getElementById("chat-log");
+      const div = document.createElement("div");
+      div.className = `message ${type}`;
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      return div;
+    }
+
+    function renderStats(data) {
+      const rows = Array.isArray(data) ? data : [];
+      const total = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+      const topSource = rows[0] || null;
+
+      cards.totalDocuments.textContent = total;
+      cards.totalSources.textContent = rows.length;
+      cards.sourceTypeLabel.textContent = topSource ? (topSource.source_type || "-") : "-";
+
+      if (!rows.length) {
+        statsOutput.innerHTML = '<div class="empty-state">Belum ada data dokumen. Jalankan ingestion terlebih dahulu.</div>';
+        return;
+      }
+
+      const max = Math.max(...rows.map((row) => Number(row.total || 0)));
+      const html = rows.map((row) => {
+        const percent = max ? (Number(row.total || 0) / max) * 100 : 0;
+        const label = row.source_type || row.source_name || "Unknown";
+        return `
+          <div class="chart-row">
+            <span>${label}</span>
+            <div class="bar-shell"><span class="bar-fill" style="width: ${percent}%"></span></div>
+            <strong>${row.total}</strong>
+          </div>
+        `;
+      }).join("");
+
+      statsOutput.innerHTML = html;
+    }
+
+    async function fetchJson(url, options = {}) {
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      const parsed = contentType.includes("application/json") ? await res.json() : {};
+
+      if (!res.ok) {
+        const detail = parsed?.detail || parsed?.error || "Permintaan gagal.";
+        throw new Error(detail);
+      }
+
+      return parsed;
+    }
+
+    async function loadStats() {
+      try {
+        const data = await fetchJson(`${API_BASE}/stats/?group_by=source_type`);
+        renderStats(data.data || []);
+        setStatus("success", "Server online");
+      } catch (error) {
+        renderStats([]);
+        setStatus("error", "API tidak tersedia");
+        appendMessage(`Tidak bisa memuat statistik: ${error.message}. Pastikan server Django sedang berjalan di http://localhost:8000.`, "system");
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        await fetchJson(`${API_BASE}/health/`);
+        setStatus("success", "Server online");
+      } catch (error) {
+        setStatus("warning", "Server belum aktif");
+      }
+    }
+
+    async function sendQuestion() {
+      const input = document.getElementById("question-input");
+      const question = input.value.trim();
+      if (!question) return;
+
+      const button = document.getElementById("send-button");
+      button.disabled = true;
+      appendMessage(question, "user");
+      input.value = "";
+
+      try {
+        const data = await fetchJson(`${API_BASE}/query/`, {
+          method: "POST",
+          body: JSON.stringify({ question, top_k: 5 }),
+        });
+
+        const sources = Array.isArray(data.sources) ? data.sources : [];
+        const sourceText = sources.length
+          ? `Sumber: ${sources.map((item) => item.title || item.source_name || "Dokumen").join(", ")}`
+          : "Sumber: tidak ada dokumen relevan ditemukan.";
+
+        const botMessage = appendMessage(data.answer || "Saya belum bisa menjawab pertanyaan ini.", "bot");
+        const sourceBox = document.createElement("div");
+        sourceBox.className = "source-box";
+        sourceBox.textContent = sourceText;
+        botMessage.appendChild(sourceBox);
+
+        await loadStats();
+      } catch (error) {
+        appendMessage(`Saya gagal memproses pertanyaan: ${error.message}. Coba lagi setelah server aktif atau pastikan akses API sudah diperbolehkan.`, "system");
+      } finally {
+        button.disabled = false;
+        input.focus();
+      }
+    }
+
+    document.getElementById("question-input").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        sendQuestion();
+      }
+    });
+
+    document.getElementById("send-button").addEventListener("click", sendQuestion);
+
+    appendMessage("Selamat datang di dashboard RAG. Tanyakan pertanyaan tentang dokumen yang telah di-ingest.", "system");
+    checkHealth();
+    loadStats();
+  </script>
+</body>
+</html>

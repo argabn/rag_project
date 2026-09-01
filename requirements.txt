@@ -1,0 +1,14 @@
+django>=5.0
+djangorestframework
+python-json-logger
+psycopg[binary]
+pgvector
+python-dotenv
+requests
+groq
+sentence-transformers
+pypdf
+python-docx
+pymysql
+sentry-sdk
+django-environ
