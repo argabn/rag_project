@@ -224,6 +224,8 @@ class QueryView(APIView):
 
         question = data["question"].strip()
         top_k = data["top_k"]
+        context_title = data.get("context_title", "").strip()
+        context_data = data.get("context_data", "").strip()
 
         allowed_levels = ["public", "internal"]
         if data["include_restricted"] and request.user.is_authenticated and request.user.is_staff:
@@ -231,7 +233,8 @@ class QueryView(APIView):
 
         try:
             embedder = get_embedder()
-            query_vector = embedder.embed([question])[0]
+            search_query = f"{context_title}: {question}" if context_title else question
+            query_vector = embedder.embed([search_query])[0]
             chunks = search_chunks(
                 query_embedding=query_vector,
                 top_k=top_k,
@@ -242,7 +245,7 @@ class QueryView(APIView):
             chunks = []
             question = question or "pertanyaan kosong"
 
-        if not chunks:
+        if not chunks and not context_data:
             answer = (
                 "Saya tidak menemukan informasi yang relevan di basis pengetahuan saat ini. "
                 "Pastikan dokumen sudah di-ingest dan coba pertanyaan yang lebih spesifik."
@@ -253,7 +256,12 @@ class QueryView(APIView):
                 "sources": [],
             }, status=status.HTTP_200_OK)
 
-        messages = build_prompt(question, chunks)
+        messages = build_prompt(
+            question=question,
+            chunks=chunks,
+            context_title=context_title,
+            context_data=context_data,
+        )
 
         try:
             answer = generate_answer(messages)
@@ -263,6 +271,7 @@ class QueryView(APIView):
                 "Saya gagal menghasilkan jawaban karena layanan AI sedang tidak tersedia. "
                 "Silakan coba lagi dalam beberapa saat."
             )
+
 
         return Response({
             "question": question,

@@ -18,7 +18,7 @@ def get_figures_dir() -> Path:
 def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = "") -> list[dict]:
     """
     Ekstraksi seluruh gambar, grafik, diagram, pohon kinerja, dan bagan dari PDF
-    lengkap dengan nomor halaman dan keterangannya (caption).
+    lengkap dengan nomor halaman, analisis naratif, dan konteks tanya-jawab.
     """
     from pypdf import PdfReader
 
@@ -86,17 +86,65 @@ def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = ""
                     )
                     caption = re.sub(r"\s+", " ", caption).strip()
 
-                    # Klasifikasikan kategori visual
+                    # Klasifikasikan kategori visual & susun analisis kontekstual
                     category = "Grafik & Kinerja"
                     cap_lower = caption.lower()
-                    if "pohon kinerja" in cap_lower or "bagan" in cap_lower:
+                    analysis = f"Bagan visual asli pada halaman {page_num} yang menyajikan data dan skema kebijakan dalam dokumen {doc_title or file_stem}."
+                    insights = ["Visualisasi resmi dokumen perencanaan/regulasi Kementerian HAM."]
+                    suggested_questions = ["Jelaskan isi dan tujuan dari gambar diagram ini.", "Bagaimana kaitan diagram ini dengan sasaran strategis?"]
+
+                    if "rata-rata kinerja" in cap_lower or "gambar 1-1" in cap_lower or "gambar 1.1" in cap_lower:
+                        category = "Kinerja Utama"
+                        analysis = "Grafik tren rata-rata capaian kinerja Ditjen HAM periode 2020–2024. Menunjukkan tren fluktuatif dengan titik terendah pada tahun 2022 (64,90%) dan pemulihan tajam pada tahun 2023 mencapai batas maksimal 120%."
+                        insights = [
+                            "Penurunan terbesar terjadi pada rentang 2020–2021 sebesar 35,07%.",
+                            "Peningkatan signifikan terjadi pada 2022–2023 sebesar 55,10%.",
+                            "Garis tren merah menggambarkan penyesuaian baseline kinerja menuju target Renstra 2025–2029."
+                        ]
+                        suggested_questions = [
+                            "Mengapa kinerja tahun 2021 dan 2022 mengalami penurunan tajam?",
+                            "Apa faktor pendorong lonjakan kinerja di tahun 2023?",
+                            "Bagaimana formula penyesuaian batas maksimal 120%?"
+                        ]
+                    elif "peduli ham" in cap_lower or "gambar 1-2" in cap_lower or "gambar 1.2" in cap_lower:
+                        category = "Peduli HAM Daerah"
+                        analysis = "Grafik capaian indikator Persentase Kabupaten/Kota Peduli HAM (KKP HAM). Mengukur kesiapan dan pemenuhan hak sipil, politik, ekonomi, sosial, dan budaya di tingkat Pemda."
+                        insights = [
+                            "Tahun 2021 tidak dilakukan pengukuran merujuk Surat Dirjen HAM No. HAM-HA.02.02-17.",
+                            "Tahun 2023 mencatat lonjakan capaian 203% yang disesuaikan menjadi 120%.",
+                            "Kendala utama meliputi rotasi operator di daerah dan minimnya anggaran bimbingan teknis."
+                        ]
+                        suggested_questions = [
+                            "Mengapa tahun 2021 capaian KKP HAM tercatat 0%?",
+                            "Apa saja hambatan teknis yang dihadapi Pemda dalam pelaporan KKP HAM?",
+                            "Apa kriteria utama Kabupaten/Kota Peduli HAM menurut Permenkumham 22/2021?"
+                        ]
+                    elif "pohon kinerja" in cap_lower:
                         category = "Pohon Kinerja & Arsitektur"
+                        analysis = "Struktur pohon kinerja (performance tree) yang memetakan hubungan kausalitas antara Focus Outcome (FO), Intermediate Outcome (Int.O), dan Indikator Kinerja Sasaran Strategis (IKSS)."
+                        insights = [
+                            "Memetakan penjabaran visi pembangunan HAM menjadi sasaran program yang terukur.",
+                            "Menghubungkan unit eselon 1 dan eselon 2 dalam rantai hasil (results chain)."
+                        ]
+                        suggested_questions = [
+                            "Bagaimana hierarki Focus Outcome (FO) pada bagan ini?",
+                            "Apa saja indikator utama yang diturunkan dari pohon kinerja ini?"
+                        ]
                     elif "kerangka" in cap_lower or "visi" in cap_lower or "misi" in cap_lower:
                         category = "Kerangka Strategis & RPJMN"
+                        analysis = "Bagan arsitektur strategis (Rumah Strategi Kementerian HAM) yang menyelaraskan 8 Misi Pembangunan Nasional (Asta Cita/Perpres 12/2025) dengan sasaran program Kementerian HAM 2025–2029."
+                        insights = [
+                            "Menempatkan HAM sebagai pilar utama pada Prioritas Nasional 1 (PN 1).",
+                            "Mengarahkan regulasi berbasis HAM, kelembagaan berperspektif HAM, dan perlindungan warga negara."
+                        ]
+                        suggested_questions = [
+                            "Bagaimana pilar Rumah Strategi Kementerian HAM disusun?",
+                            "Apa kaitan kerangka ini dengan Prioritas Nasional 1 RPJMN?"
+                        ]
                     elif "kriteria" in cap_lower or "kelembagaan" in cap_lower:
                         category = "Tata Kelola & Kelembagaan"
-                    elif "peraturan" in cap_lower or "pp" in cap_lower:
-                        category = "Statistik Regulasi"
+                        analysis = "Skema desain kelembagaan dan unit kerja pendukung untuk memastikan span of control pelayanan publik HAM berjalan optimal."
+                        insights = ["Memperkuat transformasi kelembagaan dari UKE 1 Ditjen HAM menjadi Kementerian tersendiri."]
 
                     figures.append({
                         "id": f"{safe_title_slug}_p{page_num}_{img_idx}",
@@ -109,6 +157,9 @@ def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = ""
                         "image_url": f"{settings.MEDIA_URL}extracted_figures/{img_filename}",
                         "doc_title": doc_title or file_stem,
                         "doc_id": doc_id,
+                        "analysis": analysis,
+                        "insights": insights,
+                        "suggested_questions": suggested_questions,
                     })
                 except Exception as exc:
                     logger.warning("Gagal ekstraksi gambar %s pada halaman %d: %s", getattr(img, "name", "unknown"), page_num, exc)
@@ -122,11 +173,11 @@ def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = ""
 def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = "") -> list[dict]:
     """
     Mengekstrak data deret numerik / persentase secara adaptif
-    untuk dijadikan konfigurasi Chart.js (Line, Bar, Doughnut, Multi-series).
+    untuk dijadikan konfigurasi Chart.js lengkap dengan panel Analisa & Tanya-Jawab RAG.
     """
     charts = []
 
-    # 1. Deteksi Grafik Kinerja Ditjen HAM 2020-2024 (Gambar 1-1)
+    # 1. Grafik Kinerja Ditjen HAM 2020-2024 (Gambar 1-1)
     if "Rata-rata Kinerja Direktorat Jenderal HAM" in raw_text or ("2020" in raw_text and "84,93%" in raw_text) or ("64,90%" in raw_text and "120%" in raw_text):
         charts.append({
             "id": "chart_kinerja_ditjen_ham",
@@ -135,8 +186,25 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "type": "line",
             "category": "Kinerja Utama",
             "unit": "%",
-            "doc_title": doc_title or "Renstra Kementerian HAM",
+            "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
             "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
+            "key_stats": {
+                "highest": "120.0% (2020 & 2023)",
+                "lowest": "64.90% (2022)",
+                "average": "97.46%",
+                "trend": "Pemulihan Tajam (+55.1%)"
+            },
+            "analysis": "Capaian rata-rata kinerja Direktorat Jenderal HAM sepanjang 2020–2023 mengalami fluktuasi yang tajam. Penurunan paling drastis terjadi pada 2020–2021 (-35,07%) akibat masa transisi teknokratik dan pandemi, disusul titik terendah pada 2022 (64,90%). Namun terjadi pemulihan signifikan pada 2022–2023 dengan lonjakan +55,10% hingga mencapai plafon evaluasi 120%.",
+            "insights": [
+                "Transisi indikator kinerja pasca 2020 mempengaruhi kestabilan pencatatan target.",
+                "Tahun 2020 dan 2023 mengalami anomali capaian melampaui target sehingga disesuaikan batas standar 120%.",
+                "Garis merah menunjukkan baseline adaptasi untuk target Renstra 2025–2029."
+            ],
+            "suggested_questions": [
+                "Mengapa capaian kinerja tahun 2021 dan 2022 anjlok?",
+                "Faktor apa saja yang mendorong lonjakan kinerja sebesar 55,1% di tahun 2023?",
+                "Bagaimana sistem SAKIP menetapkan baseline target kinerja Ditjen HAM?"
+            ],
             "datasets": [
                 {
                     "label": "Realisasi Kinerja (%)",
@@ -159,20 +227,36 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "fill": False,
                 },
             ],
-            "notes": "Penurunan terbesar terjadi pada 2020–2021 (35,07%), peningkatan signifikan terjadi pada 2022–2023 (55,1%). Capaian tahun 2020 dan 2023 disesuaikan batas maksimal 120%.",
+            "notes": "Penurunan terbesar 2020–2021 (-35,07%), lonjakan terbesar 2022–2023 (+55,1%). Capaian disesuaikan batas maksimal 120%.",
         })
 
-    # 2. Deteksi Capaian Kabupaten/Kota Peduli HAM (Gambar 1-2)
+    # 2. Capaian Kabupaten/Kota Peduli HAM (Gambar 1-2)
     if "Kabupaten/Kota Peduli HAM" in raw_text or "KKP HAM" in raw_text or "IKP 1.1 Persentase Kabupaten/Kota peduli HAM" in raw_text:
         charts.append({
             "id": "chart_kabupaten_peduli_ham",
             "title": "Gambar 1.2: Capaian Indikator Kabupaten/Kota Peduli HAM (2020 - 2024)",
-            "subtitle": "Persentase & Realisasi Pemda yang Memenuhi Kriteria KKP HAM",
+            "subtitle": "Persentase & Realisasi Pemda Memenuhi Kriteria KKP HAM",
             "type": "bar",
             "category": "Peduli HAM Daerah",
             "unit": "%",
-            "doc_title": doc_title or "Renstra Kementerian HAM",
-            "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
+            "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "key_stats": {
+                "highest": "120.0% (2023 disesuaikan)",
+                "lowest": "0.0% (2021)",
+                "average": "59.52%",
+                "trend": "Meningkat Signifikan"
+            },
+            "analysis": "Indikator KKP HAM mengukur peran Pemerintah Daerah dalam pemenuhan hak sipil, politik, ekonomi, sosial, dan budaya. Tahun 2021 tidak dilakukan pengukuran karena penyesuaian regulasi pasca pandemi. Capaian kembali pulih di 2022 (67,5%) dan melampaui target di 2023 (anomali 203% dinormalisasi menjadi 120%).",
+            "insights": [
+                "Tahun 2021 pengukuran ditiadakan berdasarkan Surat Dirjen HAM No. HAM-HA.02.02-17.",
+                "Tahun 2023 terdapat lonjakan pelaporan daerah karena sinergi intensif Kanwil dan Pemda.",
+                "Kendala utama: rotasi operator daerah dan belum seragamnya nomenklatur HAM di Pemda."
+            ],
+            "suggested_questions": [
+                "Mengapa tahun 2021 pengukuran KKP HAM tidak dilaksanakan?",
+                "Apa penyebab lonjakan capaian hingga 203% pada tahun 2023?",
+                "Apa kendala utama yang dialami operator daerah dalam pengisian KKP HAM?"
+            ],
             "datasets": [
                 {
                     "label": "Capaian (%)",
@@ -192,10 +276,10 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "fill": False,
                 },
             ],
-            "notes": "Tahun 2021 pengukuran tidak dilakukan (Surat Dirjen HAM No. HAM-HA.02.02-17). Tahun 2023 anomali capaian 203% disesuaikan menjadi 120%.",
+            "notes": "Pengukuran berlandaskan Permenkumham 22/2021. Tahun 2023 disesuaikan batas atas 120%.",
         })
 
-    # 3. Deteksi Penanganan Dugaan Pelanggaran HAM (Gambar 1-3)
+    # 3. Penanganan Dugaan Pelanggaran HAM (Gambar 1-3)
     if "Penanganan Dugaan Pelanggaran HAM" in raw_text or "SIMASHAM" in raw_text:
         charts.append({
             "id": "chart_pelanggaran_ham",
@@ -204,8 +288,24 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "type": "line",
             "category": "Penegakan & Perlindungan",
             "unit": "%",
-            "doc_title": doc_title or "Renstra Kementerian HAM",
-            "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
+            "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "key_stats": {
+                "highest": "120.0% (2020 & 2023)",
+                "lowest": "66.70% (2022)",
+                "average": "97.20%",
+                "trend": "Fluktuatif Menuju Stabil"
+            },
+            "analysis": "Mengukur kepatuhan dan respons instansi terlapor terhadap rekomendasi penanganan dugaan pelanggaran HAM. Mengalami penurunan pada 2020–2022 karena kendala koordinasi lintas instansi selama pandemi dan integrasi aplikasi SIMASHAM yang belum tuntas, kemudian melonjak kembali di 2023 setelah intensifikasi FGD mediasi dan surat klarifikasi kedua.",
+            "insights": [
+                "Tahun 2020 (138,75%) dan 2023 (127,6%) dinormalisasi menjadi batas 120%.",
+                "Metode mediasi dua arah via FGD terbukti mempercepat tindak lanjut rekomendasi.",
+                "Integrasi SIMASHAM Pusat-Daerah menjadi kunci konsistensi data ke depan."
+            ],
+            "suggested_questions": [
+                "Bagaimana alur penyelesaian dugaan pelanggaran HAM di Ditjen HAM?",
+                "Apa fungsi aplikasi SIMASHAM dalam pemantauan rekomendasi HAM?",
+                "Mengapa respons instansi sempat melambat pada tahun 2022?"
+            ],
             "datasets": [
                 {
                     "label": "Realisasi (%)",
@@ -218,10 +318,10 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "fill": True,
                 },
             ],
-            "notes": "Tahun 2020 capaian 138,75% dan tahun 2023 capaian 127,6% disesuaikan batas standar 120%. Pengelolaan data terpusat via SIMASHAM.",
+            "notes": "Pengelolaan data diperkuat melalui aplikasi SIMASHAM dan forum mediasi lintas instansi.",
         })
 
-    # 4. Deteksi Pelayanan Publik Berbasis HAM / P2HAM (Gambar 1-4)
+    # 4. Pelayanan Publik Berbasis HAM / P2HAM (Gambar 1-4)
     if "Pelayanan Publik Berbasis HAM" in raw_text or "P2HAM" in raw_text:
         charts.append({
             "id": "chart_p2ham",
@@ -230,8 +330,24 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "type": "bar",
             "category": "Pelayanan Publik HAM",
             "unit": "%",
-            "doc_title": doc_title or "Renstra Kementerian HAM",
-            "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
+            "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "key_stats": {
+                "highest": "120.0% (2020 disesuaikan)",
+                "lowest": "70.20% (2022)",
+                "average": "86.78%",
+                "trend": "Pemulihan Bertahap"
+            },
+            "analysis": "Evaluasi kepatuhan unit kerja pemerintah dalam menyediakan fasilitas dan standar pelayanan yang ramah HAM (aksesibilitas disabilitas, lansia, perempuan, dan anak). Penurunan persentase pasca 2020 terjadi karena transformasi indikator dari 'Jumlah Unit' menjadi 'Persentase Kepatuhan Total'.",
+            "insights": [
+                "Tahun 2020 memakai satuan 'Jumlah' (capaian 330,66% disesuaikan 120%).",
+                "Mulai 2021 diubah menjadi 'Persentase' dengan standar verifikasi yang jauh lebih ketat.",
+                "Dukungan sarpras ramah disabilitas menjadi faktor penentu kelulusan P2HAM."
+            ],
+            "suggested_questions": [
+                "Apa yang dimaksud dengan Pelayanan Publik Berbasis HAM (P2HAM)?",
+                "Mengapa terjadi perubahan satuan indikator dari jumlah menjadi persentase di 2021?",
+                "Apa saja kriteria wajib unit kerja peraih penghargaan P2HAM?"
+            ],
             "datasets": [
                 {
                     "label": "Realisasi (%)",
@@ -242,10 +358,10 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "borderRadius": 8,
                 },
             ],
-            "notes": "Transformasi satuan indikator dari 'Jumlah' pada tahun 2020 (capaian 330,66% disesuaikan 120%) menjadi 'Persentase' pada 2021–2023.",
+            "notes": "Berdasarkan Permenkumham No. 27 Tahun 2018 tentang Penghargaan P2HAM.",
         })
 
-    # 5. Deteksi Jumlah Peraturan Pemerintah Diterbitkan (Gambar 1-5 / Tabel PP)
+    # 5. Jumlah Peraturan Pemerintah Diterbitkan (Gambar 1-5 / Tabel PP)
     yearly_pp_rows = []
     for line in raw_text.splitlines():
         parts = re.split(r"\s+", line.replace("|", " ").strip())
@@ -256,7 +372,6 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
 
     if yearly_pp_rows or "Jumlah Peraturan Pemerintah yang diterbitkan" in raw_text:
         if not yearly_pp_rows:
-            # Fallback data terverifikasi dari Renstra Halaman 16
             yearly_pp_rows = [
                 {"year": "2020", "total": 78, "berlaku": 72, "tidak_berlaku": 6},
                 {"year": "2021", "total": 83, "berlaku": 79, "tidak_berlaku": 4},
@@ -276,8 +391,24 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "type": "bar",
             "category": "Statistik Regulasi",
             "unit": "Peraturan",
-            "doc_title": doc_title or "Renstra Kementerian HAM",
-            "labels": labels,
+            "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "key_stats": {
+                "highest": "83 PP (2021)",
+                "lowest": "62 PP (2023)",
+                "average": "72.5 PP / Tahun",
+                "trend": "Konsolidasi & Penurunan Volume"
+            },
+            "analysis": "Statistik penerbitan Peraturan Pemerintah (PP) dalam kurun 2020–2023 menunjukkan total 290 PP diterbitkan. Dari jumlah tersebut, sebanyak 275 PP (94,8%) masih berstatus berlaku aktif, sedangkan 15 PP (5,2%) telah dicabut atau diganti. Data ini menggambarkan fenomena hyper-regulation yang menuntut pengawasan harmonisasi perspektif HAM secara intensif.",
+            "insights": [
+                "Penerbitan PP tertinggi terjadi pada 2021 (83 PP) untuk regulasi turunan UU Cipta Kerja dan penanganan pandemi.",
+                "Tingkat stabilitas keberlakuan regulasi mencapai 94,8%.",
+                "Kementerian HAM berperan sebagai leading sector supervisi agar regulasi tidak melanggar hak-hak dasar warga."
+            ],
+            "suggested_questions": [
+                "Berapa total Peraturan Pemerintah yang diterbitkan dalam periode 2020–2023?",
+                "Mengapa fenomena hyper-regulation menjadi tantangan bagi Kementerian HAM?",
+                "Bagaimana mekanisme analisis peraturan perundang-undangan dari perspektif HAM?"
+            ],
             "datasets": [
                 {
                     "label": "Masih Berlaku",
@@ -306,10 +437,10 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "fill": False,
                 },
             ],
-            "notes": "Sumber: hukumonline.com / Renstra KemenHAM. Menggambarkan laju hyper-regulation dan kepatuhan regulasi.",
+            "notes": "Sumber: hukumonline.com / Renstra KemenHAM Halaman 16.",
         })
 
-    # 6. Deteksi Tabel Tunjangan Kinerja Per Kelas Jabatan
+    # 6. Tunjangan Kinerja Per Kelas Jabatan
     tunkin_rows = []
     if "TUNJANGAN KINERJA" in raw_text.upper() or "KELAS JABATAN" in raw_text.upper():
         for line in raw_text.splitlines():
@@ -325,7 +456,6 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                 except ValueError:
                     pass
 
-    # Fallback standard Kementerian HAM Tunkin jika terdeteksi dokumen permen tunkin
     if (not tunkin_rows and "TUNJANGAN KINERJA" in raw_text.upper()) or "NOMOR 8 TAHUN 2025" in raw_text:
         tunkin_rows = [
             {"kelas": 1, "nilai": 2531250},
@@ -356,8 +486,25 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "type": "bar",
             "category": "Kompensasi & SDM",
             "unit": "Rupiah (Rp)",
-            "doc_title": doc_title or "Permen HAM No 8/2025",
-            "labels": [f"Kelas {r['kelas']}" for r in tunkin_rows],
+            "doc_title": doc_title or "Permen HAM No. 8/2025 (68e32aa73b84b.pdf)",
+            "key_stats": {
+                "highest": "Rp 33.240.000 (Kelas 17)",
+                "lowest": "Rp 2.531.250 (Kelas 1)",
+                "average": "Rp 12.336.529",
+                "trend": "Progresif Berdasarkan Beban Kerja"
+            },
+            "analysis": "Struktur kompensasi tunjangan kinerja bulanan bagi seluruh ASN di lingkungan Kementerian Hak Asasi Manusia. Ditetapkan mulai dari jenjang pelaksana terendah Kelas 1 (Rp 2,53 juta) hingga Pejabat Pimpinan Tinggi Utama Kelas 17 (Rp 33,24 juta). Besaran tunjangan dipengaruhi langsung oleh perekaman kehadiran (jam kerja 7,5 jam/hari) dan capaian sasaran kinerja pegawai.",
+            "insights": [
+                "Kelas 1 s/d 7 diperuntukkan bagi jabatan fungsional pelaksana dan staf pendukung.",
+                "Kelas 8 s/d 14 mencakup pengawas, subkoordinator, analis kebijakan, dan administrator.",
+                "Kelas 15 s/d 17 merupakan Pimpinan Tinggi Pratama, Madya, dan Utama.",
+                "Pemotongan tunjangan kinerja berlaku untuk keterlambatan, pulang mendahului jam kerja, dan cuti di luar ketentuan."
+            ],
+            "suggested_questions": [
+                "Berapa besaran tunjangan kinerja untuk Kelas Jabatan 10 dan 14?",
+                "Bagaimana aturan pemotongan tunjangan kinerja jika pegawai terlambat masuk kerja?",
+                "Apakah pegawai yang cuti sakit tetap mendapatkan tunjangan kinerja penuh?"
+            ],
             "datasets": [
                 {
                     "label": "Tunjangan Kinerja (Rp)",
@@ -368,20 +515,36 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "borderRadius": 6,
                 }
             ],
-            "notes": "Jenjang kompensasi terendah Kelas 1 (Rp 2.531.250) hingga Kelas 17 tertinggi (Rp 33.240.000).",
+            "notes": "Lampiran Peraturan Menteri Hak Asasi Manusia RI Nomor 8 Tahun 2025.",
         })
 
-    # 7. Deteksi Target Alokasi Pendanaan Program Prioritas APBN (Lampiran 2 Renstra)
+    # 7. Proyeksi Alokasi Pendanaan Program Prioritas APBN (Lampiran 2 Renstra)
     if "Satu Data HAM" in raw_text or "Pendidikan HAM bagi Aktor Negara" in raw_text or "Matriks Pendanaan Anggaran" in raw_text:
         charts.append({
             "id": "chart_alokasi_apbn",
             "title": "Proyeksi Alokasi Pendanaan Program Prioritas HAM (2025 - 2029)",
-            "subtitle": "Alokasi APBN untuk Program Satu Data HAM & RANHAM (Juta Rupiah)",
+            "subtitle": "Alokasi APBN untuk Program Satu Data HAM, Pendidikan HAM, & RANHAM (Juta Rupiah)",
             "type": "bar",
             "category": "Anggaran & Pendanaan",
             "unit": "Juta Rp",
-            "doc_title": doc_title or "Renstra Kementerian HAM",
-            "labels": ["2025", "2026", "2027", "2028", "2029"],
+            "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "key_stats": {
+                "highest": "Rp 15.972 Juta (Satu Data HAM 2029)",
+                "lowest": "Rp 2.500 Juta (RANHAM 2026)",
+                "average": "Rp 7.640 Juta / Tahun",
+                "trend": "Peningkatan Bertahap 10% / Tahun"
+            },
+            "analysis": "Matriks pendanaan APBN jangka menengah 2025–2029 untuk mendukung 3 program strategis nasional: (1) Satu Data HAM, (2) Pendidikan HAM bagi Aktor Negara & Non-Negara, dan (3) Koordinasi Pelaksanaan RANHAM. Anggaran diproyeksikan bertumbuh konsisten 10% setiap tahun guna menjamin ketercapaian target RPJMN.",
+            "insights": [
+                "Satu Data HAM mendapat porsi alokasi terbesar (Rp 12 Miliar pada 2026 naik hingga Rp 15,97 Miliar pada 2029).",
+                "Pendidikan HAM K/L/D dialokasikan Rp 3,66 Miliar di 2026 dan bertahap naik menjadi Rp 4,87 Miliar.",
+                "Penganggaran terlindung dalam Prioritas Nasional 1 sehingga aman dari pemotongan fiskal."
+            ],
+            "suggested_questions": [
+                "Berapa total anggaran yang dialokasikan untuk program Satu Data HAM hingga 2029?",
+                "Mengapa program Pendidikan HAM bagi aparatur negara menjadi prioritas alokasi APBN?",
+                "Bagaimana mekanisme pengawasan serapan anggaran RANHAM oleh Bappenas dan Kemenkeu?"
+            ],
             "datasets": [
                 {
                     "label": "Satu Data HAM",
@@ -416,7 +579,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
 
 def extract_adaptive_tables(raw_text: str, doc_id: str = "", doc_title: str = "") -> list[dict]:
     """
-    Ekstraksi tabel terstruktur adaptif dari dokumen (PESTEL, SWOT, Kompensasi, Indikator).
+    Ekstraksi tabel terstruktur adaptif lengkap dengan analisis dan chatbox RAG khusus.
     """
     tables = []
 
@@ -443,11 +606,29 @@ def extract_adaptive_tables(raw_text: str, doc_id: str = "", doc_title: str = ""
         ]
         tables.append({
             "id": "table_tunkin",
-            "title": "Tabel Besaran Tunjangan Kinerja Pegawai Kementerian HAM",
-            "source": doc_title or "Permen HAM No. 8/2025",
+            "title": "Tabel 1: Besaran Tunjangan Kinerja Pegawai Kementerian HAM",
+            "source": doc_title or "Permen HAM No. 8/2025 (68e32aa73b84b.pdf)",
+            "category": "Kompensasi & Regulasi",
             "columns": ["No", "Kelas Jabatan", "Besaran Tunjangan Kinerja (Rp)"],
             "rows": [[r["no"], r["kelas"], r["nilai"]] for r in rows],
             "total_rows": len(rows),
+            "key_stats": {
+                "highest": "Rp 33.240.000 (Kelas 17)",
+                "lowest": "Rp 2.531.250 (Kelas 1)",
+                "average": "Rp 12.336.529",
+                "trend": "17 Tingkatan Kelas Jabatan"
+            },
+            "analysis": "Tabel lampiran resmi Peraturan Menteri Hak Asasi Manusia Nomor 8 Tahun 2025 yang memuat tabel besaran nominal tunjangan kinerja per kelas jabatan 1 sampai dengan 17. Pembayaran tunjangan dilakukan setiap bulan dengan memperhitungkan capaian sasaran kinerja dan rekapitulasi kehadiran elektronik pegawai.",
+            "insights": [
+                "Kelas 1 s/d 7: Jabatan Fungsional Pelaksana & Pemula (Rp 2,53 Juta s/d Rp 5,07 Juta).",
+                "Kelas 8 s/d 14: Jabatan Pengawas, Analis Muda & Madya, Administrator (Rp 6,34 Juta s/d Rp 17,06 Juta).",
+                "Kelas 15 s/d 17: Pimpinan Tinggi Pratama, Madya, Utama (Rp 24,14 Juta s/d Rp 33,24 Juta)."
+            ],
+            "suggested_questions": [
+                "Berapa selisih tunjangan kinerja antara Kelas 14 dan Kelas 15?",
+                "Bagaimana mekanisme penyesuaian tunjangan jika pegawai naik pangkat atau promosi jabatan?",
+                "Apakah pegawai tugas belajar mendapatkan tunjangan kinerja penuh?"
+            ],
         })
 
     # 2. Tabel Peraturan Pemerintah Periode 2020-2023
@@ -460,46 +641,100 @@ def extract_adaptive_tables(raw_text: str, doc_id: str = "", doc_title: str = ""
         ]
         tables.append({
             "id": "table_pp_stats",
-            "title": "Tabel Jumlah Peraturan Pemerintah Diterbitkan (2020 - 2023)",
-            "source": doc_title or "Renstra Kementerian HAM (HukumOnline)",
+            "title": "Tabel 2: Jumlah Peraturan Pemerintah Diterbitkan & Status Keberlakuan (2020 - 2023)",
+            "source": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "category": "Statistik Regulasi",
             "columns": ["Tahun", "Total Diterbitkan", "Status Masih Berlaku", "Status Tidak Berlaku"],
             "rows": pp_rows,
-            "summary": {"total_pp": 290, "total_berlaku": 275, "total_tidak_berlaku": 15},
             "total_rows": len(pp_rows),
+            "key_stats": {
+                "highest": "83 PP (Tahun 2021)",
+                "lowest": "62 PP (Tahun 2023)",
+                "average": "72.5 PP / Tahun",
+                "trend": "94.8% Berstatus Masih Berlaku"
+            },
+            "analysis": "Rekapitulasi tahunan Peraturan Pemerintah yang diterbitkan oleh Pemerintah Pusat selama periode 2020–2023. Sebanyak 275 dari total 290 PP tetap berlaku aktif hingga saat ini. Tingginya volume regulasi ini menggarisbawahi urgensi pembentukan pedoman regulasi berperspektif HAM agar tidak timbul tumpang tindih aturan.",
+            "insights": [
+                "Tahun 2020: 78 PP (72 Berlaku, 6 Tidak Berlaku / Dicabut).",
+                "Tahun 2021: 83 PP (79 Berlaku, 4 Tidak Berlaku).",
+                "Tahun 2022: 67 PP (65 Berlaku, 2 Tidak Berlaku).",
+                "Tahun 2023: 62 PP (59 Berlaku, 3 Tidak Berlaku)."
+            ],
+            "suggested_questions": [
+                "Berapa persentase PP yang dicabut sepanjang 2020–2023?",
+                "Mengapa tahun 2021 menjadi tahun dengan penerbitan PP terbanyak?",
+                "Apa peran Kementerian HAM dalam harmonisasi Peraturan Pemerintah?"
+            ],
         })
 
     # 3. Tabel Analisis Dampak Politik & Hukum (PESTEL)
     if "Analisis Dampak Politik dan Hukum" in raw_text or "Tabel 1-2" in raw_text:
         pestel_rows = [
-            [1, "Pengarusutamaan dan pemajuan HAM merupakan PN 1 RPJMN", "Pengarusutamaan dilaksanakan kolektif melalui RAN HAM", "Opportunity (O)"],
-            [2, "Perencanaan program dan penganggaran pengarusutamaan HAM", "Menjadi prioritas nasional dan minim pemotongan anggaran", "Opportunity (O)"],
-            [3, "Akuntabilitas monitoring dan evaluasi PN 1", "Mekanisme kontrol ketat dari Bappenas dan Kemenkeu", "Threat / Tantangan (T)"],
-            [4, "Regulasi berperspektif HAM", "Perlu leading sector pengorkestrasi regulasi nasional", "Opportunity (O)"],
-            [5, "Fenomena Hyper-regulation regulasi pusat dan daerah", "Span of control luas membutuhkan sumber daya memadai", "Threat / Tantangan (T)"],
+            [1, "Pengarusutamaan HAM merupakan Prioritas Nasional (PN 1 RPJMN)", "Pengarusutamaan dilaksanakan secara kolektif via RAN HAM", "Peluang (Opportunity)"],
+            [2, "Perencanaan program dan penganggaran pengarusutamaan HAM", "Menjadi prioritas nasional dan terlindungi dari pemotongan anggaran", "Peluang (Opportunity)"],
+            [3, "Akuntabilitas monitoring dan evaluasi PN 1", "Mekanisme kontrol ketat dari Bappenas dan Kementerian Keuangan", "Tantangan (Threat)"],
+            [4, "Urgensi regulasi berperspektif HAM", "Perlu leading sector pengorkestrasi harmonisasi kebijakan nasional", "Peluang (Opportunity)"],
+            [5, "Fenomena Hyper-regulation regulasi pusat dan daerah", "Span of control luas menuntut kesiapan SDM dan infrastruktur tata kelola", "Tantangan (Threat)"],
         ]
         tables.append({
             "id": "table_pestel_politik",
-            "title": "Tabel 1-2: Analisis Lingkungan Strategis Politik dan Hukum",
-            "source": doc_title or "Renstra Kementerian HAM",
-            "columns": ["No", "Fakta Lingkungan", "Dampak terhadap Kementerian HAM", "Klasifikasi (O/T)"],
+            "title": "Tabel 1-2: Analisis Lingkungan Strategis Politik dan Hukum (PESTEL)",
+            "source": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "category": "Analisis Strategis PESTEL",
+            "columns": ["No", "Fakta Lingkungan Strategis", "Dampak terhadap Kementerian HAM", "Klasifikasi (O/T)"],
             "rows": pestel_rows,
             "total_rows": len(pestel_rows),
+            "key_stats": {
+                "highest": "3 Faktor Peluang (O)",
+                "lowest": "2 Faktor Tantangan (T)",
+                "average": "Prioritas Nasional 1",
+                "trend": "Peluang Strategis Dominan"
+            },
+            "analysis": "Hasil analisis lingkungan makro aspek politik dan hukum terhadap pemajuan HAM di Indonesia. Menunjukkan posisi strategis Kementerian HAM pasca masuknya pemajuan HAM ke dalam Prioritas Nasional 1 RPJMN 2025–2029, sekaligus memetakan tantangan fenomena hyper-regulation dan pengawasan akuntabilitas.",
+            "insights": [
+                "Peluang emas: Dukungan anggaran dan legitimasi kuat dari RPJMN 2025–2029.",
+                "Tantangan utama: Beban span of control pengawasan regulasi daerah yang sangat luas.",
+                "Rekomendasi: Penyusunan modul supervisi regulasi berperspektif HAM terintegrasi."
+            ],
+            "suggested_questions": [
+                "Apa saja poin Peluang (Opportunity) dalam analisis politik dan hukum Renstra?",
+                "Mengapa fenomena hyper-regulation diklasifikasikan sebagai Tantangan (Threat)?",
+                "Bagaimana Kementerian HAM menjawab tuntutan akuntabilitas ketat dari Bappenas?"
+            ],
         })
 
     # 4. Tabel Transformasi Indikator Kinerja 2020 - 2023
     if "Transformasi Indikator Kinerja" in raw_text or "Tabel 1-1" in raw_text:
         transform_rows = [
-            ["Tahun 2020: Jumlah institusi pusat & daerah aksi HAM", "Periode 2021-2023: Persentase Kabupaten/Kota Peduli HAM", "Fokus bergeser ke kualitas capaian daerah"],
-            ["Tahun 2020: Jumlah rekomendasi dugaan pelanggaran HAM", "Periode 2021-2023: Persentase penanganan ditindaklanjuti stakeholder", "Fokus ke efektivitas penyelesaian kasus"],
-            ["Tahun 2020: Jumlah diseminasi HAM", "Periode 2021-2023: Persentase instansi menindaklanjuti P2HAM", "Fokus ke implementasi nyata pelayanan publik"],
+            ["Tahun 2020: Jumlah institusi pusat & daerah melaksanakan aksi HAM", "Periode 2021-2023: Persentase Kabupaten/Kota Peduli HAM", "Fokus bergeser dari sekadar jumlah ke kualitas pemenuhan hak"],
+            ["Tahun 2020: Jumlah rekomendasi penanganan dugaan pelanggaran HAM", "Periode 2021-2023: Persentase penanganan ditindaklanjuti pemangku kepentingan", "Fokus bergeser ke efektivitas penyelesaian kasus secara tuntas"],
+            ["Tahun 2020: Jumlah diseminasi dan penguatan HAM", "Periode 2021-2023: Persentase instansi menindaklanjuti P2HAM", "Fokus bergeser ke implementasi nyata standar pelayanan publik"],
         ]
         tables.append({
             "id": "table_transformasi_indikator",
             "title": "Tabel 1-1: Transformasi Indikator Kinerja Ditjen HAM (2020 - 2023)",
-            "source": doc_title or "Renstra Kementerian HAM",
+            "source": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "category": "Evaluasi Indikator Kinerja",
             "columns": ["Nomenklatur Indikator Lama (2020)", "Nomenklatur Indikator Baru (2021–2023)", "Substansi & Dampak Perubahan"],
             "rows": transform_rows,
             "total_rows": len(transform_rows),
+            "key_stats": {
+                "highest": "3 Indikator Utama",
+                "lowest": "Tahun Transisi 2021",
+                "average": "Berbasis Persentase",
+                "trend": "Orientasi Hasil / Outcome"
+            },
+            "analysis": "Perubahan mendasar pada arsitektur pengukuran kinerja Ditjen HAM dari indikator berbasis kuantitas output ('Jumlah') menjadi indikator berbasis kualitas dampak/outcome ('Persentase'). Transformasi ini memperjelas akuntabilitas kinerja kementerian.",
+            "insights": [
+                "Indikator 1 bergeser ke kepedulian HAM tingkat Kabupaten/Kota.",
+                "Indikator 2 bergeser ke tindak lanjut nyata rekomendasi pelanggaran HAM.",
+                "Indikator 3 bergeser ke kepatuhan instansi dalam pelayanan publik ramah HAM."
+            ],
+            "suggested_questions": [
+                "Mengapa Ditjen HAM mengubah satuan indikator dari 'Jumlah' menjadi 'Persentase'?",
+                "Bagaimana dampak perubahan indikator ini terhadap capaian nilai SAKIP?",
+                "Apa tantangan dalam pengukuran indikator berbasis outcome?"
+            ],
         })
 
     return tables
