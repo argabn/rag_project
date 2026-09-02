@@ -3,6 +3,8 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from ingestion.models import RawDocument
+
 
 class RAGProjectSecurityAndHealthTests(TestCase):
     def setUp(self):
@@ -45,3 +47,27 @@ class RAGProjectSecurityAndHealthTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("tidak menemukan informasi yang relevan", response.data["answer"].lower())
+
+    def test_document_stats_endpoint_extracts_yearly_table_from_document_content(self):
+        RawDocument.objects.create(
+            source_type="local",
+            source_name="test-doc",
+            external_id="pp-2020-2023.txt",
+            title="Data PP Tahun 2020-2023",
+            raw_content=(
+                "Tahun Total Berlaku Tidak Berlaku\n"
+                "2020 81 77 4\n"
+                "2021 122 121 1\n"
+                "2022 59 58 1\n"
+                "2023 55 55 0"
+            ),
+            content_hash="abc123",
+            access_level="internal",
+            metadata={},
+        )
+
+        response = self.client.get(reverse("api-document-stats"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("docs", response.data)
+        self.assertGreater(len(response.data["docs"][0]["data"]), 0)
+        self.assertEqual(response.data["docs"][0]["data"][0]["year"], 2020)

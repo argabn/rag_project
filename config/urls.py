@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.urls import path, include
 
-from query.views import RootView
+from query.views import RootView, FrontendView
 
 urlpatterns = [
-    path("", RootView.as_view(), name="root"),
+    path("", FrontendView.as_view(), name="frontend"),  # Serve frontend at root
     path("admin/", admin.site.urls),
     path("api/", include("query.urls")),
 ]

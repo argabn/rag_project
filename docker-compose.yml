@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16-latest
+    container_name: rag-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rag_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
+
+  django:
+    build: .
+    container_name: rag-django
+    command: sh -c "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/rag_db
+      DJANGO_SECRET_KEY: dev-secret-key-change-in-production
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      EMBEDDING_PROVIDER: bge-m3
+      EMBEDDING_DIM: "1024"
+      CORS_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dokumen:/app/dokumen
+      - ./logs:/app/logs
+      - ./venv:/app/venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/stats/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - rag-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  rag-network:
+    driver: bridge

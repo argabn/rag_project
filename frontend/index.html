@@ -141,6 +141,70 @@
       font-size: 1rem;
     }
 
+    .document-table-box {
+      margin-top: 18px;
+      background: linear-gradient(180deg, #0d3d6b 0%, #0a2e4d 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .document-table-box .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: #0c3356;
+      color: white;
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .document-table-box h3 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw, 3rem);
+      line-height: 1.1;
+      font-weight: 800;
+      color: #f7c84d;
+    }
+
+    .document-table-box table {
+      width: 100%;
+      border-collapse: collapse;
+      color: white;
+      font-size: 1rem;
+    }
+
+    .document-table-box thead th {
+      background: #f7c84d;
+      color: #0a2e4d;
+      font-weight: 800;
+      padding: 14px 12px;
+      text-align: center;
+    }
+
+    .document-table-box tbody td {
+      border: 1px solid rgba(255,255,255,0.12);
+      text-align: center;
+      padding: 12px 10px;
+    }
+
+    .document-table-box tfoot td {
+      text-align: center;
+      font-weight: 700;
+      padding: 18px 10px;
+      color: #f7c84d;
+    }
+
+    .document-table-box .source-note {
+      text-align: right;
+      padding: 10px 18px 16px;
+      color: rgba(255,255,255,0.8);
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
     .chart-list {
       display: flex;
       flex-direction: column;
@@ -230,6 +294,33 @@
       padding-top: 8px;
     }
 
+    .upload-box {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+
+    .upload-box h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .upload-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .upload-status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-height: 20px;
+    }
+
     .composer {
       display: flex;
       gap: 10px;
@@ -281,6 +372,15 @@
         <span id="server-status" class="status-pill"><span class="status-dot warning"></span>Memeriksa server...</span>
       </div>
 
+      <div class="upload-box">
+        <h3>Upload dokumen</h3>
+        <div class="upload-controls">
+          <input id="doc-upload" type="file" multiple accept=".pdf,.docx,.txt,.md" />
+          <button id="upload-button" type="button">Upload & Ingest</button>
+        </div>
+        <div id="upload-status" class="upload-status">Belum ada file dipilih.</div>
+      </div>
+
       <div class="stats-grid" id="stats-cards">
         <div class="stat-card">
           <div class="stat-label">Total dokumen</div>
@@ -302,6 +402,8 @@
           <div class="empty-state">Memuat statistik...</div>
         </div>
       </div>
+
+      <div id="document-table-container" class="document-table-box"></div>
     </aside>
 
     <section class="panel chatbox">
@@ -377,13 +479,109 @@
       statsOutput.innerHTML = html;
     }
 
+    function renderDocumentStats(docStats) {
+      const container = document.getElementById("document-table-container");
+      const docs = Array.isArray(docStats) ? docStats : [];
+      if (!docs.length) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const allSections = docs.flatMap((doc) => Array.isArray(doc.tables) ? doc.tables.map((table) => ({ doc, table })) : []);
+      if (!allSections.length) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const html = allSections.map(({ doc, table }) => {
+        if (table.type === "yearly") {
+          const rows = Array.isArray(table.data) ? table.data : [];
+          const totalSum = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+          const berlakuSum = rows.reduce((sum, row) => sum + Number(row.berlaku || 0), 0);
+          const tidakSum = rows.reduce((sum, row) => sum + Number(row.tidak_berlaku || 0), 0);
+
+          const tableRows = rows.map((row) => `
+            <tr>
+              <td>${row.year}</td>
+              <td>${row.total}</td>
+              <td>${row.berlaku}</td>
+              <td>${row.tidak_berlaku}</td>
+            </tr>
+          `).join("");
+
+          return `
+            <div class="document-table-box" style="margin-top: 18px;">
+              <div class="header-row">
+                <h3>Jumlah PP yang Diterbitkan<br>Periode 2020-2023</h3>
+                <div style="width: 70px; height: 70px; border-radius: 50%; background: #fff; color:#0a2e4d; font-weight: 900; display:flex; align-items:center; justify-content:center; font-size: 1.8rem;">H</div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tahun</th>
+                    <th>Total</th>
+                    <th>Berlaku</th>
+                    <th>Tidak Berlaku</th>
+                  </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+                <tfoot>
+                  <tr>
+                    <td>TOTAL</td>
+                    <td>${totalSum}</td>
+                    <td>${berlakuSum}</td>
+                    <td>${tidakSum}</td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div class="source-note">Sumber: ${doc.title}</div>
+            </div>
+          `;
+        }
+
+        const rows = Array.isArray(table.data) ? table.data : [];
+        const body = rows.map((row) => `
+          <tr>
+            <td>${row.no}</td>
+            <td>${row.kelas_jabatan}</td>
+            <td>${row.nilai_raw ? `Rp${Number(row.nilai_raw).toLocaleString('id-ID')}` : '-'}</td>
+          </tr>
+        `).join("");
+
+        return `
+          <div class="document-table-box" style="margin-top: 18px;">
+            <div class="header-row">
+              <h3>${table.title}</h3>
+              <div style="width: 70px; height: 70px; border-radius: 50%; background: #fff; color:#0a2e4d; font-weight: 900; display:flex; align-items:center; justify-content:center; font-size: 1.8rem;">H</div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Kelas Jabatan</th>
+                  <th>Nilai</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
+            <div class="source-note">Sumber: ${doc.title}</div>
+          </div>
+        `;
+      }).join("");
+
+      container.innerHTML = html;
+    }
+
     async function fetchJson(url, options = {}) {
+      const isFormData = options.body instanceof FormData;
       const res = await fetch(url, {
         ...options,
-        headers: {
-          "Content-Type": "application/json",
-          ...(options.headers || {}),
-        },
+        headers: isFormData
+          ? (options.headers || {})
+          : {
+              "Content-Type": "application/json",
+              ...(options.headers || {}),
+            },
       });
 
       const contentType = res.headers.get("content-type") || "";
@@ -409,12 +607,64 @@
       }
     }
 
+    async function loadDocumentStats() {
+      try {
+        const data = await fetchJson(`${API_BASE}/document-stats/`);
+        renderDocumentStats(data.docs || []);
+      } catch (error) {
+        document.getElementById("document-table-container").innerHTML = "";
+      }
+    }
+
     async function checkHealth() {
       try {
         await fetchJson(`${API_BASE}/health/`);
         setStatus("success", "Server online");
       } catch (error) {
         setStatus("warning", "Server belum aktif");
+      }
+    }
+
+    async function uploadDocuments() {
+      const input = document.getElementById("doc-upload");
+      const files = Array.from(input.files || []);
+      if (!files.length) {
+        document.getElementById("upload-status").textContent = "Pilih file PDF, DOCX, TXT, atau MD terlebih dahulu.";
+        return;
+      }
+
+      const formData = new FormData();
+      files.forEach((file) => formData.append("files", file));
+      formData.append("source_name", "frontend-upload");
+      formData.append("access_level", "internal");
+
+      const button = document.getElementById("upload-button");
+      button.disabled = true;
+      document.getElementById("upload-status").textContent = "Mengupload dan meng-ingest dokumen...";
+
+      try {
+        const data = await fetchJson(`${API_BASE}/upload/`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const summary = [];
+        if (data.ingested?.length) summary.push(`di-ingest: ${data.ingested.length}`);
+        if (data.skipped?.length) summary.push(`dilewati: ${data.skipped.length}`);
+        if (data.errors?.length) summary.push(`error: ${data.errors.length}`);
+
+        document.getElementById("upload-status").textContent = summary.length
+          ? `Upload selesai. ${summary.join("; ")}.`
+          : "Upload selesai.";
+
+        appendMessage(`Dokumen baru berhasil diproses: ${data.ingested.join(", ") || "tidak ada"}.`, "system");
+        input.value = "";
+        await loadStats();
+      } catch (error) {
+        document.getElementById("upload-status").textContent = `Gagal upload: ${error.message}`;
+        appendMessage(`Upload dokumen gagal: ${error.message}`, "system");
+      } finally {
+        button.disabled = false;
       }
     }
 
@@ -461,10 +711,12 @@
     });
 
     document.getElementById("send-button").addEventListener("click", sendQuestion);
+    document.getElementById("upload-button").addEventListener("click", uploadDocuments);
 
     appendMessage("Selamat datang di dashboard RAG. Tanyakan pertanyaan tentang dokumen yang telah di-ingest.", "system");
     checkHealth();
     loadStats();
+    loadDocumentStats();
   </script>
 </body>
 </html>
