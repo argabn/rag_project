@@ -12,23 +12,39 @@ Aturan ketat:
 """
 
 
-def build_prompt(question: str, chunks: list[dict]) -> list[dict]:
+def build_prompt(
+    question: str,
+    chunks: list[dict],
+    context_title: str = "",
+    context_data: str = "",
+) -> list[dict]:
+    context_parts = []
+    if context_title:
+        context_parts.append(f"=== FOKUS DIAGRAM/TABEL: {context_title} ===")
+    if context_data:
+        context_parts.append(f"DATA ANALISA KHUSUS:\n{context_data}")
+
     if not chunks:
-        context_text = "(Tidak ada konteks relevan ditemukan.)"
+        retrieval_text = "(Tidak ada konteks tambahan relevan ditemukan dari dokumen.)"
     else:
-        context_text = "\n\n".join(
+        retrieval_text = "\n\n".join(
             f"[Sumber {i + 1}: {c['source_name']} - {c['title']}]\n{c['content']}"
             for i, c in enumerate(chunks)
         )
 
-    user_content = f"""Konteks:
+    context_parts.append(f"DOKUMEN TERKAIT:\n{retrieval_text}")
+    context_text = "\n\n".join(context_parts)
+
+    user_content = f"""Konteks Analisis:
 {context_text}
 
-Pertanyaan: {question}
+Pertanyaan Pengguna: {question}
 
-Jawab hanya berdasarkan konteks di atas. Sertakan referensi [Sumber N] yang relevan di akhir jawaban."""
+Instruksi:
+Jawablah pertanyaan secara spesifik dan mendalam berdasarkan diagram/tabel dan dokumen di atas. Jelaskan angka, tren, latar belakang kebijakan, maupun kendala yang relevan. Sertakan referensi sumber jika tersedia."""
 
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_content},
     ]
+

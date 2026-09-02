@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Analitik & RAG Kementerian HAM RI</title>
+  <title>Dashboard Analitik & Visualisasi Dokumen - Kementerian HAM RI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -16,7 +16,7 @@
       --bg-surface: #131d33;
       --panel: rgba(23, 33, 58, 0.85);
       --panel-card: rgba(30, 41, 69, 0.7);
-      --panel-hover: rgba(39, 53, 89, 0.85);
+      --panel-sub: rgba(15, 23, 42, 0.85);
       --border: rgba(255, 255, 255, 0.08);
       --border-active: rgba(59, 130, 246, 0.5);
       --text-main: #f8fafc;
@@ -46,7 +46,7 @@
 
     /* Top Navigation Bar */
     .navbar {
-      background: rgba(11, 17, 32, 0.8);
+      background: rgba(11, 17, 32, 0.85);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
       position: sticky;
@@ -134,26 +134,15 @@
       max-width: 1720px;
       margin: 0 auto;
       padding: 24px;
-      display: grid;
-      grid-template-columns: 1fr 420px;
+      display: flex;
+      flex-direction: column;
       gap: 24px;
     }
 
-    @media (max-width: 1200px) {
-      .app-container { grid-template-columns: 1fr; }
-    }
-
-    /* Left Analytics Workspace */
-    .workspace {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    /* Metric Header Cards */
+    /* Top Metrics Overview */
     .metrics-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
     }
 
@@ -204,18 +193,18 @@
       margin-top: 4px;
     }
 
-    /* Filter & Tab Controls */
+    /* Controls Bar */
     .controls-bar {
       background: var(--panel);
       backdrop-filter: blur(12px);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 12px 16px;
+      padding: 12px 18px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 16px;
     }
 
     .tab-group {
@@ -242,14 +231,19 @@
       transition: all 0.2s ease;
     }
 
-    .tab-btn:hover {
-      color: #fff;
-    }
+    .tab-btn:hover { color: #fff; }
 
     .tab-btn.active {
       background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
       color: #ffffff;
       box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4);
+    }
+
+    .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
     }
 
     .doc-filter-wrap {
@@ -273,253 +267,188 @@
       font-size: 0.85rem;
       outline: none;
       cursor: pointer;
-      min-width: 200px;
+      min-width: 220px;
       transition: border-color 0.2s ease;
     }
 
-    .doc-select:focus {
-      border-color: var(--primary);
+    .doc-select:focus { border-color: var(--primary); }
+
+    .btn-upload-trigger {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
     }
 
-    /* Tab Contents */
-    .tab-content {
-      display: none;
-      animation: fadeIn 0.25s ease forwards;
+    .btn-upload-trigger:hover {
+      background: rgba(59, 130, 246, 0.25);
+      color: #fff;
     }
 
-    .tab-content.active {
-      display: block;
-    }
+    /* Tab Content Visibility */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.25s ease forwards; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Section: Interactive Charts Grid */
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
-      gap: 20px;
+    /* Cards Grid / Stream */
+    .items-stream {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
     }
 
-    @media (max-width: 768px) {
-      .charts-grid { grid-template-columns: 1fr; }
-    }
-
-    .chart-panel {
+    /* Unified Chart / Table Card (Following Wireframe Exactly) */
+    .wireframe-card {
       background: var(--panel);
       backdrop-filter: blur(12px);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 20px;
+      border-radius: 20px;
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
-      box-shadow: var(--shadow);
-      position: relative;
-      transition: border-color 0.2s ease;
+      gap: 18px;
+      transition: border-color 0.25s ease;
     }
 
-    .chart-panel:hover {
-      border-color: rgba(59, 130, 246, 0.4);
+    .wireframe-card:hover {
+      border-color: rgba(59, 130, 246, 0.35);
     }
 
-    .chart-header {
+    /* Card Top Header */
+    .card-header-row {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
     }
 
-    .chart-title-area h3 {
-      font-size: 1rem;
+    .card-title-group h2 {
+      font-size: 1.25rem;
       font-weight: 700;
-      color: #f1f5f9;
-      line-height: 1.3;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
     }
 
-    .chart-title-area p {
-      font-size: 0.76rem;
+    .card-title-group p {
+      font-size: 0.8rem;
       color: var(--text-muted);
       margin-top: 4px;
     }
 
-    .chart-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 999px;
+    .card-category-badge {
       background: rgba(59, 130, 246, 0.15);
-      color: #93c5fd;
       border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 999px;
       white-space: nowrap;
     }
 
-    .chart-canvas-wrapper {
-      position: relative;
-      width: 100%;
-      height: 280px;
-      margin: auto 0;
-    }
-
-    .chart-footer {
-      margin-top: 14px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
-      font-size: 0.74rem;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-
-    /* Section: Figures / Image Gallery */
-    .figures-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .figures-grid {
+    /* Card Main Body: 2 Columns */
+    .card-main-body {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 18px;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 22px;
     }
 
-    .figure-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
+    @media (max-width: 1024px) {
+      .card-main-body { grid-template-columns: 1fr; }
+    }
+
+    /* Left Side: Visual / Canvas / Table Area */
+    .visual-side {
       display: flex;
       flex-direction: column;
-      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-      cursor: pointer;
+      gap: 12px;
     }
 
-    .figure-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--primary);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+    .visual-frame {
+      background: var(--panel-sub);
+      border: 1.5px dashed rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 380px;
+      position: relative;
     }
 
-    .figure-img-wrap {
+    .visual-frame-header {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .chart-container-canvas {
+      flex: 1;
       width: 100%;
-      height: 220px;
-      background: #0f172a;
+      min-height: 300px;
+      position: relative;
+    }
+
+    .figure-image-view {
+      flex: 1;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #090e1a;
+      border-radius: 10px;
       overflow: hidden;
-      position: relative;
+      cursor: zoom-in;
     }
 
-    .figure-img-wrap img {
+    .figure-image-view img {
       max-width: 100%;
-      max-height: 100%;
+      max-height: 320px;
       object-fit: contain;
-      transition: transform 0.3s ease;
+      transition: transform 0.25s ease;
     }
 
-    .figure-card:hover .figure-img-wrap img {
-      transform: scale(1.04);
+    .figure-image-view:hover img {
+      transform: scale(1.02);
     }
 
-    .page-tag {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
-      color: var(--accent-gold);
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 6px;
-    }
-
-    .figure-body {
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
+    .table-view-scroll {
       flex: 1;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .figure-caption {
-      font-size: 0.84rem;
-      font-weight: 600;
-      line-height: 1.4;
-      color: #e2e8f0;
-    }
-
-    .figure-meta {
-      font-size: 0.74rem;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 6px;
-    }
-
-    /* Section: Structured Tables */
-    .tables-list {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .data-table-container {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-    }
-
-    .data-table-header {
-      background: rgba(15, 23, 42, 0.9);
-      padding: 16px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .data-table-header h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--accent-gold);
-    }
-
-    .data-table-header span {
-      font-size: 0.76rem;
-      color: var(--text-muted);
-    }
-
-    .table-scroll {
-      max-height: 380px;
+      max-height: 320px;
       overflow-y: auto;
+      border-radius: 8px;
+      background: #090e1a;
     }
 
-    table.styled-table {
+    table.wireframe-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.86rem;
+      font-size: 0.82rem;
     }
 
-    table.styled-table th {
-      background: rgba(30, 41, 69, 0.9);
+    table.wireframe-table th {
+      background: #172554;
       color: #93c5fd;
       font-weight: 700;
-      padding: 12px 16px;
+      padding: 10px 14px;
       text-align: left;
       border-bottom: 1px solid var(--border);
       position: sticky;
@@ -527,50 +456,269 @@
       z-index: 2;
     }
 
-    table.styled-table td {
-      padding: 12px 16px;
+    table.wireframe-table td {
+      padding: 10px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       color: #cbd5e1;
     }
 
-    table.styled-table tbody tr:hover {
-      background: rgba(255, 255, 255, 0.03);
+    /* Left Side Footer: Summary Stats & Trend Badges */
+    .visual-summary-bar {
+      background: var(--panel-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.78rem;
     }
 
-    /* Right Sidebar: Upload & RAG Chat */
-    .sidebar {
+    .stat-pill-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .stat-pill strong {
+      color: #f1f5f9;
+    }
+
+    .trend-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Right Side: Analysis & Dedicated Chatbox */
+    .interaction-side {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
     }
 
-    /* Upload Box */
-    .upload-card {
-      background: var(--panel);
-      backdrop-filter: blur(12px);
+    /* Top Sub-Box: Analysis */
+    .analysis-box {
+      background: var(--panel-card);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 20px;
+      border-radius: 16px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .upload-card h3 {
+    .box-header-title {
       font-size: 0.95rem;
       font-weight: 700;
-      margin-bottom: 6px;
+      color: #f8fafc;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .upload-dropzone {
-      border: 2px dashed rgba(59, 130, 246, 0.4);
+    .analysis-text {
+      font-size: 0.84rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .insights-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+      list-style-type: none;
+    }
+
+    .insights-list li {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      line-height: 1.45;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .insights-list li::before {
+      content: "•";
+      color: var(--primary-light);
+      font-weight: bold;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    /* Bottom Sub-Box: Dedicated RAG Chatbox */
+    .dedicated-chatbox {
+      background: var(--panel-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 12px;
+      min-height: 280px;
+    }
+
+    .chatbox-log {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 240px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .chat-msg {
+      padding: 10px 14px;
       border-radius: 12px;
-      padding: 20px;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      max-width: 92%;
+      word-break: break-word;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .chat-msg.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+      color: #fff;
+      border-bottom-right-radius: 2px;
+    }
+
+    .chat-msg.assistant {
+      align-self: flex-start;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--border);
+      color: #f1f5f9;
+      border-bottom-left-radius: 2px;
+    }
+
+    .chat-msg.system {
+      align-self: center;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      color: #fcd34d;
+      font-size: 0.74rem;
       text-align: center;
-      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .quick-prompts {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .prompt-chip {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      color: #93c5fd;
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 999px;
       cursor: pointer;
       transition: all 0.2s ease;
-      margin-top: 10px;
+    }
+
+    .prompt-chip:hover {
+      background: rgba(59, 130, 246, 0.25);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input-field {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .chat-input-field:focus {
+      border-color: var(--primary);
+    }
+
+    .chat-submit-btn {
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.82rem;
+      padding: 0 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .chat-submit-btn:hover { background: #2563eb; }
+    .chat-submit-btn:disabled { opacity: 0.6; cursor: wait; }
+
+    /* Upload Modal Drawer */
+    .upload-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .upload-modal.active { display: flex; }
+
+    .upload-box-card {
+      background: #131d33;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      max-width: 540px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .upload-dropzone {
+      border: 2px dashed rgba(59, 130, 246, 0.4);
+      border-radius: 14px;
+      padding: 28px;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.6);
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
     .upload-dropzone:hover {
@@ -578,276 +726,49 @@
       background: rgba(59, 130, 246, 0.08);
     }
 
-    .upload-dropzone svg {
-      width: 36px;
-      height: 36px;
-      fill: none;
-      stroke: var(--primary-light);
-      margin-bottom: 6px;
-    }
-
-    .upload-dropzone p {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .upload-dropzone span {
-      color: var(--primary-light);
-      font-weight: 600;
-    }
-
-    #file-input { display: none; }
-
-    .upload-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      color: #fff;
-      font-weight: 600;
-      font-size: 0.85rem;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 18px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-      flex: 1;
-    }
-
-    .btn-primary:hover {
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .upload-status-text {
-      font-size: 0.76rem;
-      color: var(--text-muted);
-      margin-top: 8px;
-      min-height: 18px;
-    }
-
-    /* Chatbox Card */
-    .chatbox-card {
-      background: var(--panel);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 480px;
-      box-shadow: var(--shadow);
-    }
-
-    .chatbox-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .chatbox-header h3 {
-      font-size: 0.95rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .chat-messages {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      overflow-y: auto;
-      max-height: 420px;
-      padding-right: 4px;
-      margin-bottom: 14px;
-    }
-
-    .chat-bubble {
-      padding: 12px 15px;
-      border-radius: 14px;
-      font-size: 0.84rem;
-      line-height: 1.5;
-      max-width: 90%;
-      word-break: break-word;
-      animation: fadeIn 0.2s ease;
-    }
-
-    .chat-bubble.user {
-      align-self: flex-end;
-      background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
-      color: #fff;
-      border-bottom-right-radius: 3px;
-    }
-
-    .chat-bubble.assistant {
-      align-self: flex-start;
-      background: rgba(30, 41, 69, 0.95);
-      border: 1px solid var(--border);
-      color: #f1f5f9;
-      border-bottom-left-radius: 3px;
-    }
-
-    .chat-bubble.system {
-      align-self: center;
-      background: rgba(251, 191, 36, 0.1);
-      border: 1px solid rgba(251, 191, 36, 0.25);
-      color: #fcd34d;
-      font-size: 0.76rem;
-      max-width: 100%;
-      text-align: center;
-    }
-
-    .chat-sources {
-      margin-top: 8px;
-      padding-top: 6px;
-      border-top: 1px dashed rgba(255, 255, 255, 0.1);
-      font-size: 0.72rem;
-      color: var(--text-muted);
-    }
-
-    .chat-input-area {
-      display: flex;
-      gap: 8px;
-    }
-
-    .chat-input {
-      flex: 1;
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 12px 14px;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      outline: none;
-      transition: border-color 0.2s ease;
-    }
-
-    .chat-input:focus {
-      border-color: var(--primary);
-    }
-
-    .chat-send-btn {
-      background: var(--primary);
-      border: none;
-      color: #fff;
-      border-radius: 12px;
-      padding: 0 16px;
-      cursor: pointer;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s ease;
-    }
-
-    .chat-send-btn:hover {
-      background: #2563eb;
-    }
-
-    /* Fullscreen Image Lightbox Modal */
-    .modal-overlay {
+    /* Lightbox Modal */
+    .lightbox-modal {
       display: none;
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.88);
+      background: rgba(0, 0, 0, 0.9);
       backdrop-filter: blur(12px);
-      z-index: 1000;
+      z-index: 1100;
       align-items: center;
       justify-content: center;
       padding: 24px;
-      animation: fadeIn 0.2s ease;
     }
 
-    .modal-overlay.active { display: flex; }
+    .lightbox-modal.active { display: flex; }
 
-    .modal-card {
+    .lightbox-card {
       background: #131d33;
       border: 1px solid var(--border);
-      border-radius: 20px;
-      max-width: 1050px;
+      border-radius: 18px;
+      max-width: 1100px;
       width: 100%;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     }
 
-    .modal-header {
-      padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      background: #0f172a;
-    }
-
-    .modal-header h4 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #f8fafc;
-    }
-
-    .modal-close-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-      line-height: 1;
-      padding: 4px 8px;
-    }
-
-    .modal-close-btn:hover { color: #fff; }
-
-    .modal-body {
+    .lightbox-body {
       padding: 20px;
+      background: #080d19;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #070c18;
       overflow: auto;
-      max-height: 70vh;
     }
 
-    .modal-body img {
+    .lightbox-body img {
       max-width: 100%;
-      max-height: 65vh;
+      max-height: 70vh;
       object-fit: contain;
-      border-radius: 8px;
-    }
-
-    .modal-footer {
-      padding: 14px 20px;
-      background: #0f172a;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: var(--text-muted);
     }
 
     /* Scrollbars */
@@ -876,156 +797,118 @@
     </div>
   </nav>
 
-  <!-- Main Grid App Container -->
+  <!-- Main Container -->
   <div class="app-container">
 
-    <!-- Workspace Layer -->
-    <main class="workspace">
+    <!-- Top Metrics Overview -->
+    <section class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Dokumen Terindeks</div>
+        <div class="metric-value" id="val-documents">0</div>
+        <div class="metric-sub">Arsip & Renstra</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Grafik Interaktif</div>
+        <div class="metric-value" id="val-charts" style="color: #60a5fa;">0</div>
+        <div class="metric-sub">Chart.js Adaptif</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Gambar & Diagram Asli</div>
+        <div class="metric-value" id="val-figures" style="color: #fbbf24;">0</div>
+        <div class="metric-sub">Ekstraksi Visual PDF</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Tabel & Data Terstruktur</div>
+        <div class="metric-value" id="val-tables" style="color: #34d399;">0</div>
+        <div class="metric-sub">Kompensasi & SAKIP</div>
+      </div>
+    </section>
 
-      <!-- Metrics Row -->
-      <section class="metrics-row">
-        <div class="metric-card">
-          <div class="metric-label">Dokumen Aktif</div>
-          <div class="metric-value" id="val-documents">0</div>
-          <div class="metric-sub" id="sub-documents">Arsip terindeks</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Grafik Interaktif</div>
-          <div class="metric-value" id="val-charts" style="color: #60a5fa;">0</div>
-          <div class="metric-sub">Chart.js adaptif</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Gambar & Diagram</div>
-          <div class="metric-value" id="val-figures" style="color: #fbbf24;">0</div>
-          <div class="metric-sub">Ekstraksi visual PDF</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Tabel Terstruktur</div>
-          <div class="metric-value" id="val-tables" style="color: #34d399;">0</div>
-          <div class="metric-sub">Data tabular & SAKIP</div>
-        </div>
-      </section>
+    <!-- Controls Bar -->
+    <section class="controls-bar">
+      <div class="tab-group">
+        <button class="tab-btn active" data-tab="charts-tab">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
+          Grafik Interaktif
+        </button>
+        <button class="tab-btn" data-tab="figures-tab">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+          Galeri Gambar & Diagram Asli
+        </button>
+        <button class="tab-btn" data-tab="tables-tab">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h16V7H4zm0 5v3h7v-3H4zm9 0v3h7v-3h-7zm-9 5v2h7v-2H4zm9 0v2h7v-2h-7z"/></svg>
+          Tabel Terstruktur
+        </button>
+      </div>
 
-      <!-- Tab & Filter Bar -->
-      <section class="controls-bar">
-        <div class="tab-group">
-          <button class="tab-btn active" data-tab="charts-tab">
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
-            Grafik Interaktif
-          </button>
-          <button class="tab-btn" data-tab="figures-tab">
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-            Galeri Gambar & Diagram Asli
-          </button>
-          <button class="tab-btn" data-tab="tables-tab">
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h16V7H4zm0 5v3h7v-3H4zm9 0v3h7v-3h-7zm-9 5v2h7v-2H4zm9 0v2h7v-2h-7z"/></svg>
-            Tabel & Data Terstruktur
-          </button>
-        </div>
-
+      <div class="right-controls">
         <div class="doc-filter-wrap">
           <label for="doc-filter">Filter Dokumen:</label>
           <select id="doc-filter" class="doc-select">
             <option value="">Semua Dokumen</option>
           </select>
         </div>
-      </section>
+        <button id="btn-open-upload" class="btn-upload-trigger" type="button">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Upload Dokumen Baru
+        </button>
+      </div>
+    </section>
 
-      <!-- TAB 1: INTERACTIVE CHARTS -->
-      <section id="charts-tab" class="tab-content active">
-        <div id="charts-grid-container" class="charts-grid">
-          <!-- Rendered dynamically -->
-        </div>
-      </section>
+    <!-- TAB 1: INTERACTIVE CHARTS -->
+    <section id="charts-tab" class="tab-content active">
+      <div id="charts-stream" class="items-stream">
+        <!-- Rendered dynamically with the exact Wireframe Layout -->
+      </div>
+    </section>
 
-      <!-- TAB 2: FIGURES & DIAGRAMS GALLERY -->
-      <section id="figures-tab" class="tab-content">
-        <div class="figures-header">
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Menampilkan seluruh grafik, bagan, pohon kinerja, dan skema visual asli yang diekstrak langsung dari halaman dokumen PDF.
-          </p>
-          <input type="text" id="fig-search" placeholder="Cari keterangan gambar..." style="background: rgba(15,23,42,0.8); border: 1px solid var(--border); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; outline: none;" />
-        </div>
-        <div id="figures-grid-container" class="figures-grid">
-          <!-- Rendered dynamically -->
-        </div>
-      </section>
+    <!-- TAB 2: FIGURES & DIAGRAMS GALLERY -->
+    <section id="figures-tab" class="tab-content">
+      <div id="figures-stream" class="items-stream">
+        <!-- Rendered dynamically with the exact Wireframe Layout -->
+      </div>
+    </section>
 
-      <!-- TAB 3: STRUCTURED DATA TABLES -->
-      <section id="tables-tab" class="tab-content">
-        <div id="tables-list-container" class="tables-list">
-          <!-- Rendered dynamically -->
-        </div>
-      </section>
-
-    </main>
-
-    <!-- Right Sidebar (Upload & RAG Chat) -->
-    <aside class="sidebar">
-
-      <!-- Upload Card -->
-      <section class="upload-card">
-        <h3>
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-          Upload Dokumen Adaptif
-        </h3>
-        <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">
-          Upload file PDF/DOCX untuk otomatis mengekstrak seluruh grafik, diagram, dan data statistik.
-        </p>
-
-        <div class="upload-dropzone" id="dropzone">
-          <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-          <p>Tarik file ke sini atau <span>Pilih File</span></p>
-          <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.md" />
-        </div>
-
-        <div class="upload-actions">
-          <button id="btn-upload" class="btn-primary" type="button">
-            Proses & Ekstrak Grafik
-          </button>
-        </div>
-        <div id="upload-status-text" class="upload-status-text">Siap menerima dokumen.</div>
-      </section>
-
-      <!-- Chatbox Card -->
-      <section class="chatbox-card">
-        <div class="chatbox-header">
-          <h3>
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-            Asisten Analisis Dokumen
-          </h3>
-          <span style="font-size: 0.72rem; color: var(--text-muted);">RAG + LLM</span>
-        </div>
-
-        <div id="chat-messages" class="chat-messages">
-          <div class="chat-bubble system">
-            Selamat datang di Asisten Cerdas Kementerian HAM. Tanyakan informasi, tren kinerja, atau isi dokumen yang sudah terindeks.
-          </div>
-        </div>
-
-        <div class="chat-input-area">
-          <input type="text" id="chat-input" class="chat-input" placeholder="Tanyakan seputar Renstra atau Tunjangan Kinerja..." maxlength="2000" />
-          <button id="chat-send" class="chat-send-btn" type="button">Kirim</button>
-        </div>
-      </section>
-
-    </aside>
+    <!-- TAB 3: STRUCTURED DATA TABLES -->
+    <section id="tables-tab" class="tab-content">
+      <div id="tables-stream" class="items-stream">
+        <!-- Rendered dynamically with the exact Wireframe Layout -->
+      </div>
+    </section>
 
   </div>
 
-  <!-- Fullscreen Modal Lightbox -->
-  <div id="image-modal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h4 id="modal-title">Pratinjau Gambar Dokumen</h4>
-        <button id="modal-close" class="modal-close-btn">&times;</button>
+  <!-- Upload Modal -->
+  <div id="upload-modal" class="upload-modal">
+    <div class="upload-box-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color:#fff;">Upload Dokumen Adaptif</h3>
+        <button id="btn-close-upload" style="background:transparent; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
       </div>
-      <div class="modal-body">
-        <img id="modal-img" src="" alt="Pratinjau Dokumen" />
+      <p style="font-size: 0.8rem; color: var(--text-muted);">
+        Unggah file PDF, DOCX, TXT untuk mengekstrak seluruh grafik, gambar diagram, dan tabel statistik secara otomatis.
+      </p>
+      <div class="upload-dropzone" id="dropzone">
+        <svg width="40" height="40" fill="none" stroke="#60a5fa" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:8px;"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+        <p style="font-size: 0.85rem; color: #cbd5e1;">Tarik file ke sini atau <span style="color:#60a5fa; font-weight:600;">Pilih File</span></p>
+        <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.md" style="display:none;" />
       </div>
-      <div class="modal-footer">
-        <span id="modal-doc">Sumber: Dokumen Kementerian HAM</span>
-        <span id="modal-page">Halaman -</span>
+      <div id="upload-status" style="font-size: 0.8rem; color: var(--text-muted); min-height: 20px;"></div>
+      <button id="btn-start-upload" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border:none; color:#fff; font-weight:700; padding:12px; border-radius:10px; cursor:pointer;">
+        Mulai Proses & Ekstraksi Grafik
+      </button>
+    </div>
+  </div>
+
+  <!-- Fullscreen Lightbox Modal -->
+  <div id="lightbox-modal" class="lightbox-modal">
+    <div class="lightbox-card">
+      <div style="padding: 14px 20px; background: #0f172a; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <h4 id="lightbox-title" style="font-size: 0.95rem; font-weight: 700; color: #fff;">Pratinjau Gambar Dokumen</h4>
+        <button id="btn-close-lightbox" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <div class="lightbox-body">
+        <img id="lightbox-img" src="" alt="Pratinjau" />
       </div>
     </div>
   </div>
@@ -1035,19 +918,20 @@
     let globalData = { charts: [], figures: [], tables: [], documents: [] };
     let chartInstances = {};
 
-    // DOM Elements
+    // Elements
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const docFilter = document.getElementById("doc-filter");
+    const uploadModal = document.getElementById("upload-modal");
+    const btnOpenUpload = document.getElementById("btn-open-upload");
+    const btnCloseUpload = document.getElementById("btn-close-upload");
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("file-input");
-    const btnUpload = document.getElementById("btn-upload");
-    const uploadStatus = document.getElementById("upload-status-text");
-    const docFilter = document.getElementById("doc-filter");
-    const tabButtons = document.querySelectorAll(".tab-btn");
-    const modal = document.getElementById("image-modal");
-    const modalClose = document.getElementById("modal-close");
-    const modalImg = document.getElementById("modal-img");
-    const modalTitle = document.getElementById("modal-title");
-    const modalDoc = document.getElementById("modal-doc");
-    const modalPage = document.getElementById("modal-page");
+    const btnStartUpload = document.getElementById("btn-start-upload");
+    const uploadStatus = document.getElementById("upload-status");
+    const lightboxModal = document.getElementById("lightbox-modal");
+    const btnCloseLightbox = document.getElementById("btn-close-lightbox");
+    const lightboxImg = document.getElementById("lightbox-img");
+    const lightboxTitle = document.getElementById("lightbox-title");
 
     // Tab Navigation
     tabButtons.forEach((btn) => {
@@ -1060,7 +944,11 @@
       });
     });
 
-    // File Upload UI Handlers
+    // Upload Modal Handling
+    btnOpenUpload.addEventListener("click", () => uploadModal.classList.add("active"));
+    btnCloseUpload.addEventListener("click", () => uploadModal.classList.remove("active"));
+    uploadModal.addEventListener("click", (e) => { if (e.target === uploadModal) uploadModal.classList.remove("active"); });
+
     dropzone.addEventListener("click", () => fileInput.click());
     dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.style.borderColor = "var(--primary)"; });
     dropzone.addEventListener("dragleave", () => { dropzone.style.borderColor = "rgba(59, 130, 246, 0.4)"; });
@@ -1076,13 +964,13 @@
       uploadStatus.textContent = `${fileInput.files.length} file dipilih.`;
     });
 
-    btnUpload.addEventListener("click", async () => {
+    btnStartUpload.addEventListener("click", async () => {
       if (!fileInput.files.length) {
         uploadStatus.textContent = "Silakan pilih file terlebih dahulu.";
         return;
       }
-      btnUpload.disabled = true;
-      uploadStatus.textContent = "Mengunggah & memproses grafik adaptif...";
+      btnStartUpload.disabled = true;
+      uploadStatus.textContent = "Mengunggah dan mengekstrak grafik & data statistik...";
 
       const formData = new FormData();
       Array.from(fileInput.files).forEach((f) => formData.append("files", f));
@@ -1093,21 +981,31 @@
         const res = await fetch(`${API_BASE}/upload/`, { method: "POST", body: formData });
         const data = await res.json();
         if (res.ok) {
-          uploadStatus.textContent = `Berhasil memproses ${data.ingested?.length || 0} file.`;
+          uploadStatus.textContent = `Selesai! ${data.ingested?.length || 0} file diproses.`;
           fileInput.value = "";
+          setTimeout(() => uploadModal.classList.remove("active"), 1200);
           await loadDocumentAnalytics();
-          appendChatMessage(`Dokumen baru berhasil diproses dan seluruh grafiknya telah diekstrak ke dashboard.`, "assistant");
         } else {
           uploadStatus.textContent = `Gagal: ${data.error || "Terjadi kesalahan."}`;
         }
       } catch (err) {
         uploadStatus.textContent = `Error: ${err.message}`;
       } finally {
-        btnUpload.disabled = false;
+        btnStartUpload.disabled = false;
       }
     });
 
-    // Load Analytics & Stats
+    // Lightbox Modal
+    btnCloseLightbox.addEventListener("click", () => lightboxModal.classList.remove("active"));
+    lightboxModal.addEventListener("click", (e) => { if (e.target === lightboxModal) lightboxModal.classList.remove("active"); });
+
+    function openLightbox(url, title) {
+      lightboxImg.src = url;
+      lightboxTitle.textContent = title;
+      lightboxModal.classList.add("active");
+    }
+
+    // Load Data & Render
     async function loadDocumentAnalytics() {
       try {
         const filterVal = docFilter.value;
@@ -1116,15 +1014,13 @@
         const data = await res.json();
         globalData = data;
 
-        // Update Top Metric Counters
         document.getElementById("val-documents").textContent = data.metrics?.total_documents || 0;
         document.getElementById("val-charts").textContent = data.metrics?.total_charts || 0;
         document.getElementById("val-figures").textContent = data.metrics?.total_figures || 0;
         document.getElementById("val-tables").textContent = data.metrics?.total_tables || 0;
 
-        // Populate Doc Filter Dropdown
         if (!filterVal && Array.isArray(data.documents)) {
-          const currentSelection = docFilter.value;
+          const curVal = docFilter.value;
           docFilter.innerHTML = '<option value="">Semua Dokumen</option>';
           data.documents.forEach((d) => {
             const opt = document.createElement("option");
@@ -1132,269 +1028,389 @@
             opt.textContent = `${d.title} (${(d.content_length / 1000).toFixed(1)}k chars)`;
             docFilter.appendChild(opt);
           });
-          docFilter.value = currentSelection;
+          docFilter.value = curVal;
         }
 
-        renderInteractiveCharts(data.charts || []);
-        renderFiguresGallery(data.figures || []);
-        renderStructuredTables(data.tables || []);
+        renderChartsStream(data.charts || []);
+        renderFiguresStream(data.figures || []);
+        renderTablesStream(data.tables || []);
       } catch (err) {
-        console.error("Gagal memuat analitik dokumen:", err);
+        console.error("Gagal memuat data analitik:", err);
       }
     }
 
     docFilter.addEventListener("change", () => loadDocumentAnalytics());
 
-    // Render Interactive Charts (Chart.js)
-    function renderInteractiveCharts(charts) {
-      const container = document.getElementById("charts-grid-container");
-      
-      // Cleanup old chart instances
-      Object.values(chartInstances).forEach((chart) => chart.destroy());
+    // Helper: Create Wireframe Card Skeleton
+    function createWireframeCard({ title, subtitle, source, category, itemId, visualHtml, keyStats, analysis, insights, suggestedQuestions, contextData }) {
+      const card = document.createElement("article");
+      card.className = "wireframe-card";
+      card.id = `card-${itemId}`;
+
+      // Insights HTML
+      const insightsHtml = (insights || []).map((ins) => `<li>${ins}</li>`).join("");
+
+      // Key Stats Pills
+      const statsPills = keyStats ? `
+        <div class="stat-pill-group">
+          ${keyStats.highest ? `<span class="stat-pill">Tertinggi: <strong>${keyStats.highest}</strong></span>` : ''}
+          ${keyStats.lowest ? `<span class="stat-pill">Terendah: <strong>${keyStats.lowest}</strong></span>` : ''}
+          ${keyStats.average ? `<span class="stat-pill">Rata-rata: <strong>${keyStats.average}</strong></span>` : ''}
+        </div>
+        ${keyStats.trend ? `<div class="trend-indicator">${keyStats.trend}</div>` : ''}
+      ` : `<div class="stat-pill-group"><span class="stat-pill">Data terverifikasi Renstra KemenHAM</span></div>`;
+
+      // Quick Prompt Chips
+      const promptChips = (suggestedQuestions || []).map((q) => `
+        <button class="prompt-chip" type="button" data-prompt="${q}">${q}</button>
+      `).join("");
+
+      card.innerHTML = `
+        <!-- Top Header Row -->
+        <div class="card-header-row">
+          <div class="card-title-group">
+            <h2>${title}</h2>
+            <p>Sumber: ${source || "Dokumen Kementerian HAM"}</p>
+          </div>
+          <span class="card-category-badge">${category || "Statistik"}</span>
+        </div>
+
+        <!-- Main Body: 2 Columns Layout (Wireframe) -->
+        <div class="card-main-body">
+
+          <!-- Left Side: Visual Frame -->
+          <div class="visual-side">
+            <div class="visual-frame">
+              ${visualHtml}
+            </div>
+            <div class="visual-summary-bar">
+              ${statsPills}
+            </div>
+          </div>
+
+          <!-- Right Side: Analysis (Top) & Dedicated Chatbox (Bottom) -->
+          <div class="interaction-side">
+
+            <!-- Top: Analisa Grafik -->
+            <div class="analysis-box">
+              <div class="box-header-title">
+                <span>🧠</span> Analisa & Temuan Kunci
+              </div>
+              <p class="analysis-text">${analysis || "Analisis sedang disiapkan berdasarkan data dokumen terkait."}</p>
+              ${insightsHtml ? `<ul class="insights-list">${insightsHtml}</ul>` : ''}
+            </div>
+
+            <!-- Bottom: Tanya Jawab (RAG) Khusus -->
+            <div class="dedicated-chatbox">
+              <div class="box-header-title" style="font-size: 0.88rem;">
+                <span>💬</span> Tanya Jawab (RAG) - Khusus ${title.split(':')[0]}
+              </div>
+
+              <div class="chatbox-log" id="log-${itemId}">
+                <div class="chat-msg system">
+                  Tanyakan hal spesifik tentang data, tren, atau kebijakan terkait ${title}.
+                </div>
+              </div>
+
+              ${promptChips ? `<div class="quick-prompts">${promptChips}</div>` : ''}
+
+              <div class="chat-input-row">
+                <input type="text" class="chat-input-field" id="input-${itemId}" placeholder="Ketik pertanyaan tentang grafik/tabel ini..." maxlength="1000" />
+                <button class="chat-submit-btn" id="btn-send-${itemId}" type="button">Kirim</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      `;
+
+      // Wire up dedicated chatbox interactions
+      setTimeout(() => {
+        const inputField = document.getElementById(`input-${itemId}`);
+        const sendBtn = document.getElementById(`btn-send-${itemId}`);
+        const chatLog = document.getElementById(`log-${itemId}`);
+
+        async function handleSend(customText = "") {
+          const queryText = (customText || inputField.value).trim();
+          if (!queryText) return;
+
+          // User message
+          const uMsg = document.createElement("div");
+          uMsg.className = "chat-msg user";
+          uMsg.textContent = queryText;
+          chatLog.appendChild(uMsg);
+          chatLog.scrollTop = chatLog.scrollHeight;
+          if (!customText) inputField.value = "";
+          sendBtn.disabled = true;
+
+          try {
+            const res = await fetch(`${API_BASE}/query/`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                question: queryText,
+                context_title: title,
+                context_data: contextData || analysis || "",
+                top_k: 4,
+              }),
+            });
+            const resData = await res.json();
+            const botMsg = document.createElement("div");
+            botMsg.className = "chat-msg assistant";
+            botMsg.textContent = resData.answer || "Maaf, saya tidak menemukan jawaban spesifik.";
+            chatLog.appendChild(botMsg);
+          } catch (err) {
+            const errMsg = document.createElement("div");
+            errMsg.className = "chat-msg system";
+            errMsg.textContent = `Gagal mengirim: ${err.message}`;
+            chatLog.appendChild(errMsg);
+          } finally {
+            sendBtn.disabled = false;
+            chatLog.scrollTop = chatLog.scrollHeight;
+          }
+        }
+
+        sendBtn.addEventListener("click", () => handleSend());
+        inputField.addEventListener("keydown", (e) => { if (e.key === "Enter") handleSend(); });
+
+        // Chip clicks
+        card.querySelectorAll(".prompt-chip").forEach((chip) => {
+          chip.addEventListener("click", () => {
+            handleSend(chip.getAttribute("data-prompt"));
+          });
+        });
+      }, 0);
+
+      return card;
+    }
+
+    // 1. Render Interactive Charts Stream (Chart.js)
+    function renderChartsStream(charts) {
+      const container = document.getElementById("charts-stream");
+      Object.values(chartInstances).forEach((c) => c.destroy());
       chartInstances = {};
 
       if (!charts.length) {
-        container.innerHTML = '<div style="color: var(--text-muted); font-style: italic; grid-column: 1/-1; padding: 24px; text-align: center;">Tidak ada grafik interaktif ditemukan untuk filter ini.</div>';
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:32px;">Tidak ada grafik ditemukan untuk filter ini.</div>';
         return;
       }
 
       container.innerHTML = "";
 
       charts.forEach((ch, idx) => {
-        const panel = document.createElement("div");
-        panel.className = "chart-panel";
-
-        const canvasId = `chart-canvas-${idx}`;
-        panel.innerHTML = `
-          <div class="chart-header">
-            <div class="chart-title-area">
-              <h3>${ch.title}</h3>
-              <p>${ch.subtitle || ""}</p>
-            </div>
-            <span class="chart-badge">${ch.category || ch.unit || "Statistik"}</span>
-          </div>
-          <div class="chart-canvas-wrapper">
+        const canvasId = `canvas-${ch.id || idx}`;
+        const visualHtml = `
+          <div class="visual-frame-header">📈 Area Grafik Interaktif (Chart.js Canvas)</div>
+          <div class="chart-container-canvas">
             <canvas id="${canvasId}"></canvas>
           </div>
-          <div class="chart-footer">
-            <span>${ch.notes || "Data terverifikasi Renstra KemenHAM"}</span>
-            <strong style="color: #93c5fd;">${ch.doc_title || ""}</strong>
-          </div>
         `;
-        container.appendChild(panel);
 
-        // Initialize Chart.js
-        const ctx = document.getElementById(canvasId).getContext("2d");
-        const chartType = ch.type || "line";
+        const contextData = `Judul: ${ch.title}\nKategori: ${ch.category}\nLabels: ${ch.labels?.join(", ")}\nDatasets: ${JSON.stringify(ch.datasets?.map(d => ({ label: d.label, data: d.data })))}\nAnalisis: ${ch.analysis}`;
 
-        chartInstances[canvasId] = new Chart(ctx, {
-          type: chartType,
-          data: {
-            labels: ch.labels,
-            datasets: ch.datasets.map((ds) => ({
-              ...ds,
-              pointHoverRadius: 8,
-              borderWidth: ds.borderWidth || 2.5,
-            })),
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: "index", intersect: false },
-            plugins: {
-              legend: {
-                labels: { color: "#cbd5e1", font: { family: "Plus Jakarta Sans", size: 11, weight: 600 } },
-              },
-              tooltip: {
-                backgroundColor: "rgba(15, 23, 42, 0.95)",
-                titleColor: "#f8fafc",
-                bodyColor: "#cbd5e1",
-                borderColor: "rgba(59, 130, 246, 0.4)",
-                borderWidth: 1,
-                padding: 10,
-                callbacks: {
-                  label: function (context) {
-                    let label = context.dataset.label || "";
-                    if (label) label += ": ";
-                    if (context.parsed.y !== null) {
-                      if (ch.unit === "Rupiah (Rp)" || ch.unit === "Rp") {
-                        label += "Rp " + context.parsed.y.toLocaleString("id-ID");
-                      } else if (ch.unit === "%") {
-                        label += context.parsed.y + "%";
-                      } else {
-                        label += context.parsed.y + " " + (ch.unit || "");
-                      }
-                    }
-                    return label;
-                  },
-                },
-              },
-            },
-            scales: {
-              x: {
-                grid: { color: "rgba(255, 255, 255, 0.05)" },
-                ticks: { color: "#94a3b8", font: { family: "Plus Jakarta Sans", size: 11 } },
-              },
-              y: {
-                grid: { color: "rgba(255, 255, 255, 0.06)" },
-                ticks: {
-                  color: "#94a3b8",
-                  font: { family: "Plus Jakarta Sans", size: 11 },
-                  callback: function (val) {
-                    if (ch.unit === "%") return val + "%";
-                    if (ch.unit === "Rupiah (Rp)" && val >= 1000000) return (val / 1000000) + " Jt";
-                    return val;
-                  },
-                },
-              },
-            },
-          },
+        const card = createWireframeCard({
+          title: ch.title,
+          subtitle: ch.subtitle,
+          source: ch.doc_title,
+          category: ch.category,
+          itemId: `chart-${idx}`,
+          visualHtml: visualHtml,
+          keyStats: ch.key_stats,
+          analysis: ch.analysis,
+          insights: ch.insights,
+          suggestedQuestions: ch.suggested_questions,
+          contextData: contextData,
         });
+
+        container.appendChild(card);
+
+        // Render Chart.js
+        setTimeout(() => {
+          const ctx = document.getElementById(canvasId).getContext("2d");
+          const defaultPalette = [
+            { bg: "rgba(59, 130, 246, 0.85)", border: "#2563eb" },
+            { bg: "rgba(16, 185, 129, 0.85)", border: "#059669" },
+            { bg: "rgba(245, 158, 11, 0.85)", border: "#d97706" },
+            { bg: "rgba(168, 85, 247, 0.85)", border: "#9333ea" },
+            { bg: "rgba(244, 63, 94, 0.85)", border: "#e11d48" },
+          ];
+
+          chartInstances[canvasId] = new Chart(ctx, {
+            type: ch.type || "bar",
+            data: {
+              labels: ch.labels || [],
+              datasets: (ch.datasets || []).map((ds, dIdx) => {
+                const pal = defaultPalette[dIdx % defaultPalette.length];
+                const isLine = ds.type === "line" || (!ds.type && ch.type === "line");
+                return {
+                  ...ds,
+                  backgroundColor: ds.backgroundColor || (isLine ? "rgba(59, 130, 246, 0.15)" : pal.bg),
+                  borderColor: ds.borderColor || pal.border,
+                  borderWidth: ds.borderWidth || (isLine ? 3 : 1.5),
+                  borderRadius: isLine ? 0 : (ds.borderRadius !== undefined ? ds.borderRadius : 6),
+                  pointHoverRadius: 8,
+                  pointRadius: isLine ? 5 : undefined,
+                };
+              }),
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: "index", intersect: false },
+              plugins: {
+                legend: {
+                  labels: {
+                    color: "#cbd5e1",
+                    font: { family: "Plus Jakarta Sans", size: 11, weight: 600 },
+                    boxWidth: 14,
+                    padding: 12,
+                  }
+                },
+                tooltip: {
+                  backgroundColor: "rgba(15, 23, 42, 0.95)",
+                  titleColor: "#f8fafc",
+                  bodyColor: "#cbd5e1",
+                  borderColor: "rgba(59, 130, 246, 0.4)",
+                  borderWidth: 1,
+                  padding: 10,
+                  callbacks: {
+                    label: function (ctx) {
+                      let label = ctx.dataset.label || "";
+                      if (label) label += ": ";
+                      if (ctx.parsed.y !== null && ctx.parsed.y !== undefined) {
+                        if (ch.unit === "Rupiah (Rp)" || ch.unit === "Rp") {
+                          label += "Rp " + ctx.parsed.y.toLocaleString("id-ID");
+                        } else if (ch.unit === "%") {
+                          label += ctx.parsed.y + "%";
+                        } else {
+                          label += ctx.parsed.y + " " + (ch.unit || "");
+                        }
+                      }
+                      return label;
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  grid: { color: "rgba(255, 255, 255, 0.05)" },
+                  ticks: { color: "#94a3b8", font: { family: "Plus Jakarta Sans", size: 11 } }
+                },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: "rgba(255, 255, 255, 0.06)" },
+                  ticks: {
+                    color: "#94a3b8",
+                    font: { family: "Plus Jakarta Sans", size: 11 },
+                    callback: function (val) {
+                      if (ch.unit === "%") return val + "%";
+                      if ((ch.unit === "Rupiah (Rp)" || ch.unit === "Rp") && val >= 1000000) {
+                        return (val / 1000000).toLocaleString("id-ID") + " Jt";
+                      }
+                      if (ch.unit === "Juta Rp" && val >= 1000) {
+                        return (val / 1000).toLocaleString("id-ID") + " M";
+                      }
+                      return val;
+                    },
+                  },
+                },
+              },
+            },
+          });
+        }, 0);
       });
     }
 
-    // Render Figures / Image Gallery
-    function renderFiguresGallery(figures) {
-      const container = document.getElementById("figures-grid-container");
+    // 2. Render Figures Stream (Visual PDF Figures)
+    function renderFiguresStream(figures) {
+      const container = document.getElementById("figures-stream");
       if (!figures.length) {
-        container.innerHTML = '<div style="color: var(--text-muted); font-style: italic; grid-column: 1/-1; padding: 24px; text-align: center;">Tidak ada gambar atau diagram ditemukan.</div>';
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:32px;">Tidak ada gambar atau diagram ditemukan.</div>';
         return;
       }
 
       container.innerHTML = "";
 
-      figures.forEach((fg) => {
-        const card = document.createElement("div");
-        card.className = "figure-card";
-        card.innerHTML = `
-          <div class="figure-img-wrap">
-            <span class="page-tag">Hal ${fg.page || 1}</span>
-            <img src="${fg.image_url}" alt="${fg.title}" loading="lazy" />
+      figures.forEach((fg, idx) => {
+        const visualHtml = `
+          <div class="visual-frame-header" style="justify-content: space-between;">
+            <span>🖼️ Gambar Dokumen Asli (Halaman ${fg.page || 1})</span>
+            <span style="font-size:0.72rem; color:var(--accent-gold); cursor:pointer;" onclick="openLightbox('${fg.image_url}', '${fg.title}')">🔍 Klik untuk Zoom</span>
           </div>
-          <div class="figure-body">
-            <div class="figure-caption">${fg.title}</div>
-            <div class="figure-meta">
-              <span>${fg.category || "Grafik"}</span>
-              <span style="color: #60a5fa;">${fg.doc_title || ""}</span>
-            </div>
+          <div class="figure-image-view" onclick="openLightbox('${fg.image_url}', '${fg.title}')">
+            <img src="${fg.image_url}" alt="${fg.title}" loading="lazy" />
           </div>
         `;
 
-        card.addEventListener("click", () => {
-          modalImg.src = fg.image_url;
-          modalTitle.textContent = fg.title;
-          modalDoc.textContent = `Dokumen: ${fg.doc_title || "KemenHAM"}`;
-          modalPage.textContent = `Halaman ${fg.page || 1}`;
-          modal.classList.add("active");
+        const keyStats = {
+          highest: `Hal ${fg.page || 1}`,
+          lowest: `${fg.width || 800}x${fg.height || 600} px`,
+          average: fg.category || "Grafik Dokumen",
+          trend: "Arsip Asli"
+        };
+
+        const card = createWireframeCard({
+          title: fg.title,
+          subtitle: `Gambar Halaman ${fg.page}`,
+          source: fg.doc_title,
+          category: fg.category || "Visual Dokumen",
+          itemId: `fig-${idx}`,
+          visualHtml: visualHtml,
+          keyStats: keyStats,
+          analysis: fg.analysis,
+          insights: fg.insights,
+          suggestedQuestions: fg.suggested_questions,
+          contextData: `Judul Gambar: ${fg.title}\nHalaman: ${fg.page}\nAnalisis: ${fg.analysis}`,
         });
 
         container.appendChild(card);
       });
     }
 
-    // Search filter in figures gallery
-    document.getElementById("fig-search").addEventListener("input", (e) => {
-      const q = e.target.value.toLowerCase();
-      const cards = document.querySelectorAll(".figure-card");
-      cards.forEach((card) => {
-        const text = card.textContent.toLowerCase();
-        card.style.display = text.includes(q) ? "flex" : "none";
-      });
-    });
-
-    // Modal Close
-    modalClose.addEventListener("click", () => modal.classList.remove("active"));
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("active"); });
-
-    // Render Structured Tables
-    function renderStructuredTables(tables) {
-      const container = document.getElementById("tables-list-container");
+    // 3. Render Structured Tables Stream
+    function renderTablesStream(tables) {
+      const container = document.getElementById("tables-stream");
       if (!tables.length) {
-        container.innerHTML = '<div style="color: var(--text-muted); font-style: italic; padding: 24px; text-align: center;">Tidak ada tabel terstruktur ditemukan.</div>';
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:32px;">Tidak ada tabel terstruktur ditemukan.</div>';
         return;
       }
 
       container.innerHTML = "";
 
-      tables.forEach((tbl) => {
-        const tableCard = document.createElement("div");
-        tableCard.className = "data-table-container";
-
+      tables.forEach((tbl, idx) => {
         const ths = tbl.columns.map((c) => `<th>${c}</th>`).join("");
         const trs = tbl.rows.map((row) => `
-          <tr>
-            ${row.map((cell) => `<td>${cell}</td>`).join("")}
-          </tr>
+          <tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>
         `).join("");
 
-        tableCard.innerHTML = `
-          <div class="data-table-header">
-            <h3>${tbl.title}</h3>
-            <span>Sumber: ${tbl.source || "Dokumen KemenHAM"}</span>
-          </div>
-          <div class="table-scroll">
-            <table class="styled-table">
+        const visualHtml = `
+          <div class="visual-frame-header">📋 Area Tabel Data Terstruktur (${tbl.total_rows || tbl.rows.length} Baris Data)</div>
+          <div class="table-view-scroll">
+            <table class="wireframe-table">
               <thead><tr>${ths}</tr></thead>
               <tbody>${trs}</tbody>
             </table>
           </div>
         `;
-        container.appendChild(tableCard);
+
+        const card = createWireframeCard({
+          title: tbl.title,
+          subtitle: `Tabel Data SAKIP & Kompensasi`,
+          source: tbl.source,
+          category: tbl.category || "Tabel Data",
+          itemId: `tbl-${idx}`,
+          visualHtml: visualHtml,
+          keyStats: tbl.key_stats,
+          analysis: tbl.analysis,
+          insights: tbl.insights,
+          suggestedQuestions: tbl.suggested_questions,
+          contextData: `Tabel: ${tbl.title}\nKolom: ${tbl.columns.join(", ")}\nBaris Teratas: ${JSON.stringify(tbl.rows.slice(0, 5))}\nAnalisis: ${tbl.analysis}`,
+        });
+
+        container.appendChild(card);
       });
     }
-
-    // Chatbox RAG Logic
-    const chatInput = document.getElementById("chat-input");
-    const chatSend = document.getElementById("chat-send");
-    const chatMessages = document.getElementById("chat-messages");
-
-    function appendChatMessage(text, type = "assistant", sources = []) {
-      const bubble = document.createElement("div");
-      bubble.className = `chat-bubble ${type}`;
-      bubble.textContent = text;
-
-      if (sources && sources.length > 0) {
-        const srcDiv = document.createElement("div");
-        srcDiv.className = "chat-sources";
-        srcDiv.textContent = "Sumber: " + sources.map((s) => s.title || s.source_name || "Dokumen").join(", ");
-        bubble.appendChild(srcDiv);
-      }
-
-      chatMessages.appendChild(bubble);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-      return bubble;
-    }
-
-    async function sendQuestion() {
-      const q = chatInput.value.trim();
-      if (!q) return;
-
-      appendChatMessage(q, "user");
-      chatInput.value = "";
-      chatSend.disabled = true;
-
-      try {
-        const res = await fetch(`${API_BASE}/query/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: q, top_k: 5 }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          appendChatMessage(data.answer, "assistant", data.sources || []);
-        } else {
-          appendChatMessage(`Maaf, terjadi kesalahan: ${data.error || "Gagal memproses pertanyaan."}`, "assistant");
-        }
-      } catch (err) {
-        appendChatMessage(`Gagal menghubungi server: ${err.message}`, "assistant");
-      } finally {
-        chatSend.disabled = false;
-        chatInput.focus();
-      }
-    }
-
-    chatSend.addEventListener("click", sendQuestion);
-    chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendQuestion(); });
 
     // Initial Load
     loadDocumentAnalytics();
