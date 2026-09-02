@@ -55,10 +55,15 @@ rag_project/
 
 ## 2. Prasyarat
 
+### Untuk Development Lokal
 - Python 3.11+
 - Akun **Supabase** (atau Postgres lain yang mendukung extension `pgvector`)
 - Akun **Groq** untuk API key LLM
 - (Opsional) Akses ke sumber API internal (e-office, SIMPEG, arsip digital), file lokal, dan/atau database MySQL yang ingin di-ingest
+
+### Untuk Docker / Docker Compose
+- **Docker** 20.10+ dan **Docker Compose** 2.0+ (untuk menjalankan semua service dalam container)
+- Atau hanya **Docker** jika Anda menggunakan Supabase eksternal
 
 ---
 
@@ -86,16 +91,28 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Lalu edit `.env` dan isi minimal:
+Lalu edit `.env` dan isi minimal (untuk dev lokal):
 
-```
+```bash
+# Ganti dengan URL database Supabase Anda
 DATABASE_URL=postgresql://postgres:[PASSWORD]@[SUPABASE_HOST]:5432/postgres
+
+# Ganti dengan API key Groq Anda (dari https://console.groq.com/)
 GROQ_API_KEY=isi-dengan-api-key-groq-anda
+
+# Django config
+DJANGO_SECRET_KEY=ubah-dengan-secret-key-acak-panjang-minimal-50-char
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Embedding config (local)
 EMBEDDING_PROVIDER=bge-m3
 EMBEDDING_DIM=1024
 ```
 
 Field lain (`EOFFICE_TOKEN`, `SIMPEG_TOKEN`, `ARSIP_TOKEN`, `MYSQL_SOURCE_*`) diisi sesuai sumber data yang ingin dipakai — boleh dikosongkan kalau sumber tersebut belum dipakai.
+
+**Catatan**: Untuk Docker Compose, `.env` akan di-generate otomatis (lihat bagian 6.2 & 6.3).
 
 ### 3.4. Aktifkan extension `pgvector` di Supabase
 
@@ -191,15 +208,151 @@ python manage.py process_chunks --doc-id <uuid-dokumen>
 
 ---
 
-## 6. Menjalankan Server
+## 6. Menjalankan Server & Deployment
+
+### 6.1. Mode Development Lokal (Virtual Environment)
+
+**Prasyarat**: Virtual environment sudah disetup dan `requirements.txt` sudah di-install (lihat bagian 3.1 & 3.2).
 
 ```bash
+# Aktifkan virtual environment (jika belum aktif)
+source venv/bin/activate          # Linux/macOS
+# atau: venv\Scripts\activate     # Windows
+
+# Jalankan server development
 python manage.py runserver
 ```
 
 Server berjalan di `http://localhost:8000`.
 
-### 6.1. Endpoint yang tersedia
+**Tips**:
+- Server development auto-reload saat ada perubahan file
+- Cocok untuk iterasi cepat saat development
+- Jangan gunakan di production — gunakan Gunicorn/Docker (lihat 6.2)
+
+### 6.2. Mode Docker (Image Lokal)
+
+Jika Anda sudah punya database eksternal (Supabase), cukup jalankan Django dalam container:
+
+```bash
+# Build image Docker
+docker build -t rag-project:latest .
+
+# Jalankan container
+docker run -p 8000:8000 \
+  --env-file .env \
+  -v $(pwd)/dokumen:/app/dokumen \
+  rag-project:latest
+```
+
+**Penjelasan flags**:
+- `-p 8000:8000` — map port container ke host
+- `--env-file .env` — load environment variables dari file `.env`
+- `-v $(pwd)/dokumen:/app/dokumen` — mount folder lokal untuk ingestion file
+
+Server berjalan di `http://localhost:8000`.
+
+**Catatan**: Pastikan `DATABASE_URL` di `.env` menunjuk ke database yang valid (bukan `localhost` — gunakan Supabase atau PostgreSQL eksternal).
+
+### 6.3. Mode Docker Compose (Recommended untuk Development)
+
+Setup otomatis Django + PostgreSQL dalam container:
+
+```bash
+# Buat file docker-compose.yml di root project (lihat template di bawah)
+# Kemudian jalankan:
+docker-compose up --build
+```
+
+**Template `docker-compose.yml`**:
+
+```yaml
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16-latest
+    container_name: rag-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rag_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  django:
+    build: .
+    container_name: rag-django
+    command: sh -c "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/rag_db
+      DJANGO_SECRET_KEY: dev-secret-key-change-in-production
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      EMBEDDING_PROVIDER: bge-m3
+      EMBEDDING_DIM: "1024"
+      CORS_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dokumen:/app/dokumen
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/stats/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: rag-network
+```
+
+**Buat file `init-pgvector.sql`** di root project untuk setup extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+**Jalankan**:
+
+```bash
+# Setup pertama kali (build + migrate)
+docker-compose up --build
+
+# Jalankan ulang (tanpa rebuild)
+docker-compose up
+
+# Stop containers
+docker-compose down
+
+# Stop + hapus data database
+docker-compose down -v
+```
+
+Server berjalan di `http://localhost:8000`, PostgreSQL di `localhost:5432`.
+
+**Keuntungan Docker Compose**:
+- Setup database otomatis (tidak perlu Supabase)
+- Cocok untuk development team (semua pakai environment yang sama)
+- Mudah reset database (jalankan `docker-compose down -v`)
+
+### 6.4. Endpoint yang tersedia
 
 | Endpoint         | Method | Fungsi                                      |
 |-------------------|--------|----------------------------------------------|
@@ -207,7 +360,7 @@ Server berjalan di `http://localhost:8000`.
 | `/api/stats/`      | GET    | Statistik/agregasi dokumen untuk grafik      |
 | `/admin/`           | GET    | Django admin panel                           |
 
-### 6.2. Contoh test lewat curl
+### 6.5. Contoh test lewat curl
 
 ```bash
 curl -X POST http://localhost:8000/api/query/ \
@@ -282,7 +435,115 @@ ingest_api / ingest_local / ingest_mysql
 
 ---
 
-## 9. Catatan Keamanan & Produksi
+## 9. Production Deployment Guide
+
+### 9.1. Checklist Sebelum Deploy
+
+```bash
+# 1. Environment variables
+- [ ] DJANGO_SECRET_KEY = string acak panjang (minimal 50 char)
+- [ ] DJANGO_DEBUG = False
+- [ ] DATABASE_URL = Postgres production (bukan lokal)
+- [ ] GROQ_API_KEY = valid API key
+- [ ] DJANGO_ALLOWED_HOSTS = domain production Anda
+- [ ] CORS_ALLOWED_ORIGINS = domain frontend production
+```
+
+### 9.2. Deploy ke Server dengan Docker
+
+```bash
+# 1. Clone repository di server
+git clone <repo-url> /home/app/rag_project
+cd /home/app/rag_project
+
+# 2. Buat .env dengan config production
+cat > .env << EOF
+DATABASE_URL=postgresql://user:pass@prod-db-host:5432/rag_db
+DJANGO_SECRET_KEY=$(openssl rand -base64 50)
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+GROQ_API_KEY=xxxxx
+EMBEDDING_PROVIDER=bge-m3
+EMBEDDING_DIM=1024
+CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+EOF
+
+# 3. Build dan push image ke registry (Docker Hub / ECR / GCR)
+docker build -t your-registry/rag-project:latest .
+docker push your-registry/rag-project:latest
+
+# 4. Jalankan container di server production
+docker run -d --name rag-prod \
+  -p 80:8000 \
+  --restart always \
+  --env-file .env \
+  -v /home/app/rag_project/dokumen:/app/dokumen \
+  -v /home/app/rag_project/logs:/app/logs \
+  your-registry/rag-project:latest
+
+# 5. Setup Nginx reverse proxy (opsional, tapi recommended)
+# (lihat template Nginx di bawah)
+```
+
+### 9.3. Template Nginx Reverse Proxy
+
+Buat file `/etc/nginx/sites-available/rag-project`:
+
+```nginx
+upstream django_app {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://django_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static/ {
+        alias /home/app/rag_project/staticfiles/;
+    }
+}
+```
+
+Lalu enable:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/rag-project /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 9.4. Setup SSL dengan Let's Encrypt (Recommended)
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
+
+Certbot otomatis update Nginx config untuk HTTPS.
+
+### 9.5. Monitoring & Logging
+
+```bash
+# Lihat logs container
+docker logs -f rag-prod
+
+# Setup log rotation (di file `/app/logs/rag.log`)
+# Add cron job untuk backup logs
+0 0 * * * tar -czf /home/app/backups/logs-$(date +%Y%m%d).tar.gz /home/app/rag_project/logs/
+```
+
+---
+
+## 10. Catatan Keamanan & Produksi
 
 - **Kontrol akses**: field `access_level` (`public` / `internal` / `restricted`) pada `RawDocument` membatasi data apa yang boleh dijawab ke user biasa vs. user staff. Untuk produksi, sambungkan ke sistem role/permission Django yang sesungguhnya, bukan hanya `is_staff`.
 - **Data sensitif ke LLM eksternal**: Groq adalah API pihak ketiga. Pertimbangkan kebijakan data sebelum mengirim konten dari sumber sensitif (misal SIMPEG) ke LLM eksternal — bisa ditambahkan masking/redaction sebelum prompt dikirim.
@@ -292,12 +553,15 @@ ingest_api / ingest_local / ingest_mysql
 
 ---
 
-## 10. Troubleshooting Singkat
+## 11. Troubleshooting Singkat
 
 | Masalah | Kemungkinan Penyebab | Solusi |
 |---|---|---|
-| `relation "vector" does not exist` saat migrate | Extension pgvector belum diaktifkan | Jalankan `create extension if not exists vector;` di Supabase SQL Editor |
-| `ValueError: DATABASE_URL tidak valid` | Format `DATABASE_URL` salah | Pastikan formatnya persis `postgresql://user:pass@host:port/dbname` |
-| Similarity search selalu kosong | `score_threshold` di `retriever.py` terlalu ketat, atau belum ada chunk ter-generate | Jalankan `process_chunks`, atau naikkan nilai `score_threshold` |
-| Proses embedding lambat di awal | Model `bge-m3` sedang diunduh pertama kali | Tunggu sampai selesai, atau pakai `EMBEDDING_PROVIDER=external` |
-| Error saat `ingest_mysql` | Kredensial `MYSQL_SOURCE_*` salah/kosong | Cek kembali isian di `.env` |
+| `relation "vector" does not exist` saat migrate | Extension pgvector belum diaktifkan | **Supabase**: Jalankan `create extension if not exists vector;` di SQL Editor. **Docker Compose**: Extension sudah auto-enable via `init-pgvector.sql` |
+| `ValueError: DATABASE_URL tidak valid` | Format `DATABASE_URL` salah | Pastikan formatnya persis `postgresql://user:pass@host:port/dbname`. Di Docker Compose: `postgresql://postgres:postgres@postgres:5432/rag_db` |
+| `Connection refused` ke database saat Docker run | Container Django start sebelum PostgreSQL siap | Gunakan Docker Compose yang sudah punya `healthcheck` dan `depends_on`, atau tambahkan delay dengan `sleep 10` sebelum migrate |
+| Similarity search selalu kosong | `score_threshold` di `retriever.py` terlalu ketat, atau belum ada chunk ter-generate | Jalankan `python manage.py process_chunks`, atau naikkan nilai `score_threshold` |
+| Proses embedding lambat di awal | Model `bge-m3` sedang diunduh pertama kali (~2GB) | Tunggu sampai selesai, atau pakai `EMBEDDING_PROVIDER=external`. Di Docker Compose, mount volume untuk cache model |
+| Error saat `ingest_mysql` | Kredensial `MYSQL_SOURCE_*` salah/kosong | Cek kembali isian di `.env`. MySQL server harus accessible dari container Django |
+| Docker: `permission denied` saat mount volume | User dalam container tidak punya akses folder | Jalankan dengan `--user` flag atau ubah permission folder: `chmod 777 ./dokumen` |
+| Docker Compose: `postgres_data volume already exists` | Conflict dengan data lama | Jalankan `docker-compose down -v` untuk reset, atau ubah nama volume di `docker-compose.yml` |
