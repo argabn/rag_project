@@ -1228,22 +1228,45 @@
         // Render Chart.js
         setTimeout(() => {
           const ctx = document.getElementById(canvasId).getContext("2d");
+          const defaultPalette = [
+            { bg: "rgba(59, 130, 246, 0.85)", border: "#2563eb" },
+            { bg: "rgba(16, 185, 129, 0.85)", border: "#059669" },
+            { bg: "rgba(245, 158, 11, 0.85)", border: "#d97706" },
+            { bg: "rgba(168, 85, 247, 0.85)", border: "#9333ea" },
+            { bg: "rgba(244, 63, 94, 0.85)", border: "#e11d48" },
+          ];
+
           chartInstances[canvasId] = new Chart(ctx, {
-            type: ch.type || "line",
+            type: ch.type || "bar",
             data: {
-              labels: ch.labels,
-              datasets: ch.datasets.map((ds) => ({
-                ...ds,
-                pointHoverRadius: 8,
-                borderWidth: ds.borderWidth || 2.5,
-              })),
+              labels: ch.labels || [],
+              datasets: (ch.datasets || []).map((ds, dIdx) => {
+                const pal = defaultPalette[dIdx % defaultPalette.length];
+                const isLine = ds.type === "line" || (!ds.type && ch.type === "line");
+                return {
+                  ...ds,
+                  backgroundColor: ds.backgroundColor || (isLine ? "rgba(59, 130, 246, 0.15)" : pal.bg),
+                  borderColor: ds.borderColor || pal.border,
+                  borderWidth: ds.borderWidth || (isLine ? 3 : 1.5),
+                  borderRadius: isLine ? 0 : (ds.borderRadius !== undefined ? ds.borderRadius : 6),
+                  pointHoverRadius: 8,
+                  pointRadius: isLine ? 5 : undefined,
+                };
+              }),
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
               interaction: { mode: "index", intersect: false },
               plugins: {
-                legend: { labels: { color: "#cbd5e1", font: { family: "Plus Jakarta Sans", size: 11, weight: 600 } } },
+                legend: {
+                  labels: {
+                    color: "#cbd5e1",
+                    font: { family: "Plus Jakarta Sans", size: 11, weight: 600 },
+                    boxWidth: 14,
+                    padding: 12,
+                  }
+                },
                 tooltip: {
                   backgroundColor: "rgba(15, 23, 42, 0.95)",
                   titleColor: "#f8fafc",
@@ -1255,7 +1278,7 @@
                     label: function (ctx) {
                       let label = ctx.dataset.label || "";
                       if (label) label += ": ";
-                      if (ctx.parsed.y !== null) {
+                      if (ctx.parsed.y !== null && ctx.parsed.y !== undefined) {
                         if (ch.unit === "Rupiah (Rp)" || ch.unit === "Rp") {
                           label += "Rp " + ctx.parsed.y.toLocaleString("id-ID");
                         } else if (ch.unit === "%") {
@@ -1270,14 +1293,24 @@
                 },
               },
               scales: {
-                x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94a3b8" } },
+                x: {
+                  grid: { color: "rgba(255, 255, 255, 0.05)" },
+                  ticks: { color: "#94a3b8", font: { family: "Plus Jakarta Sans", size: 11 } }
+                },
                 y: {
+                  beginAtZero: true,
                   grid: { color: "rgba(255, 255, 255, 0.06)" },
                   ticks: {
                     color: "#94a3b8",
+                    font: { family: "Plus Jakarta Sans", size: 11 },
                     callback: function (val) {
                       if (ch.unit === "%") return val + "%";
-                      if (ch.unit === "Rupiah (Rp)" && val >= 1000000) return (val / 1000000) + " Jt";
+                      if ((ch.unit === "Rupiah (Rp)" || ch.unit === "Rp") && val >= 1000000) {
+                        return (val / 1000000).toLocaleString("id-ID") + " Jt";
+                      }
+                      if (ch.unit === "Juta Rp" && val >= 1000) {
+                        return (val / 1000).toLocaleString("id-ID") + " M";
+                      }
                       return val;
                     },
                   },

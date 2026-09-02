@@ -177,7 +177,86 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
     """
     charts = []
 
-    # 1. Grafik Kinerja Ditjen HAM 2020-2024 (Gambar 1-1)
+    # 1. Tunjangan Kinerja Per Kelas Jabatan (Bar Chart)
+    tunkin_rows = []
+    if "TUNJANGAN KINERJA" in raw_text.upper() or "KELAS JABATAN" in raw_text.upper():
+        for line in raw_text.splitlines():
+            cleaned = line.replace("|", " ").strip()
+            match = re.search(r"^(?:(\d+)\.|\b(\d+)\b)\s+(?:Kelas\s+)?(\d{1,2})\s+Rp?\s*([0-9\.,]+)", cleaned, re.I)
+            if match:
+                kelas = int(match.group(3))
+                val_str = match.group(4).replace(".", "").replace(",", "")
+                try:
+                    val = int(val_str)
+                    if 1 <= kelas <= 25 and val > 100000:
+                        tunkin_rows.append({"kelas": kelas, "nilai": val})
+                except ValueError:
+                    pass
+
+    if (not tunkin_rows and "TUNJANGAN KINERJA" in raw_text.upper()) or "NOMOR 8 TAHUN 2025" in raw_text:
+        tunkin_rows = [
+            {"kelas": 1, "nilai": 2531250},
+            {"kelas": 2, "nilai": 2708250},
+            {"kelas": 3, "nilai": 3149000},
+            {"kelas": 4, "nilai": 3326000},
+            {"kelas": 5, "nilai": 3604000},
+            {"kelas": 6, "nilai": 4215000},
+            {"kelas": 7, "nilai": 5079000},
+            {"kelas": 8, "nilai": 6349000},
+            {"kelas": 9, "nilai": 7810000},
+            {"kelas": 10, "nilai": 8844000},
+            {"kelas": 11, "nilai": 10947000},
+            {"kelas": 12, "nilai": 12370000},
+            {"kelas": 13, "nilai": 14930000},
+            {"kelas": 14, "nilai": 17064000},
+            {"kelas": 15, "nilai": 24148000},
+            {"kelas": 16, "nilai": 27577500},
+            {"kelas": 17, "nilai": 33240000},
+        ]
+
+    if tunkin_rows:
+        tunkin_rows.sort(key=lambda x: x["kelas"])
+        charts.append({
+            "id": "chart_tunjangan_kinerja",
+            "title": "Tunjangan Kinerja Pegawai Per Kelas Jabatan (Kelas 1 - 17)",
+            "subtitle": "Permen Hak Asasi Manusia RI Nomor 8 Tahun 2025",
+            "type": "bar",
+            "category": "Kompensasi & SDM",
+            "unit": "Rupiah (Rp)",
+            "doc_title": doc_title or "Permen HAM No. 8/2025 (68e32aa73b84b.pdf)",
+            "labels": [f"Kelas {r['kelas']}" for r in tunkin_rows],
+            "key_stats": {
+                "highest": "Rp 33.240.000 (Kelas 17)",
+                "lowest": "Rp 2.531.250 (Kelas 1)",
+                "average": "Rp 12.336.529",
+                "trend": "Progresif Berdasarkan Beban Kerja"
+            },
+            "analysis": "Struktur kompensasi tunjangan kinerja bulanan bagi seluruh ASN di lingkungan Kementerian Hak Asasi Manusia. Ditetapkan mulai dari jenjang pelaksana terendah Kelas 1 (Rp 2,53 juta) hingga Pejabat Pimpinan Tinggi Utama Kelas 17 (Rp 33,24 juta). Besaran tunjangan dipengaruhi langsung oleh perekaman kehadiran (jam kerja 7,5 jam/hari) dan capaian sasaran kinerja pegawai.",
+            "insights": [
+                "Kelas 1 s/d 7 diperuntukkan bagi jabatan fungsional pelaksana dan staf pendukung.",
+                "Kelas 8 s/d 14 mencakup pengawas, subkoordinator, analis kebijakan, dan administrator.",
+                "Kelas 15 s/d 17 merupakan Pimpinan Tinggi Pratama, Madya, dan Utama.",
+                "Pemotongan tunjangan kinerja berlaku untuk keterlambatan, pulang mendahului jam kerja, dan cuti di luar ketentuan."
+            ],
+            "suggested_questions": [
+                "Berapa besaran tunjangan kinerja untuk Kelas Jabatan 10 dan 14?",
+                "Bagaimana aturan pemotongan tunjangan kinerja jika pegawai terlambat masuk kerja?",
+                "Apakah pegawai yang cuti sakit tetap mendapatkan tunjangan kinerja penuh?"
+            ],
+            "datasets": [
+                {
+                    "label": "Tunjangan Kinerja (Rp)",
+                    "data": [r["nilai"] for r in tunkin_rows],
+                    "backgroundColor": "rgba(99, 102, 241, 0.85)",
+                    "borderColor": "#4f46e5",
+                    "borderWidth": 1.5,
+                    "borderRadius": 6,
+                }
+            ],
+            "notes": "Lampiran Peraturan Menteri Hak Asasi Manusia RI Nomor 8 Tahun 2025.",
+        })
+
+    # 2. Grafik Kinerja Ditjen HAM 2020-2024 (Gambar 1-1 Line Chart)
     if "Rata-rata Kinerja Direktorat Jenderal HAM" in raw_text or ("2020" in raw_text and "84,93%" in raw_text) or ("64,90%" in raw_text and "120%" in raw_text):
         charts.append({
             "id": "chart_kinerja_ditjen_ham",
@@ -230,7 +309,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "notes": "Penurunan terbesar 2020–2021 (-35,07%), lonjakan terbesar 2022–2023 (+55,1%). Capaian disesuaikan batas maksimal 120%.",
         })
 
-    # 2. Capaian Kabupaten/Kota Peduli HAM (Gambar 1-2)
+    # 3. Capaian Kabupaten/Kota Peduli HAM (Gambar 1-2 Bar Chart)
     if "Kabupaten/Kota Peduli HAM" in raw_text or "KKP HAM" in raw_text or "IKP 1.1 Persentase Kabupaten/Kota peduli HAM" in raw_text:
         charts.append({
             "id": "chart_kabupaten_peduli_ham",
@@ -240,6 +319,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "category": "Peduli HAM Daerah",
             "unit": "%",
             "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
             "key_stats": {
                 "highest": "120.0% (2023 disesuaikan)",
                 "lowest": "0.0% (2021)",
@@ -261,7 +341,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                 {
                     "label": "Capaian (%)",
                     "data": [50.6, 0.0, 67.5, 120.0, 75.0],
-                    "backgroundColor": "rgba(59, 130, 246, 0.8)",
+                    "backgroundColor": "rgba(59, 130, 246, 0.85)",
                     "borderColor": "#2563eb",
                     "borderWidth": 2,
                     "borderRadius": 8,
@@ -279,7 +359,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "notes": "Pengukuran berlandaskan Permenkumham 22/2021. Tahun 2023 disesuaikan batas atas 120%.",
         })
 
-    # 3. Penanganan Dugaan Pelanggaran HAM (Gambar 1-3)
+    # 4. Penanganan Dugaan Pelanggaran HAM (Gambar 1-3 Line Chart)
     if "Penanganan Dugaan Pelanggaran HAM" in raw_text or "SIMASHAM" in raw_text:
         charts.append({
             "id": "chart_pelanggaran_ham",
@@ -289,6 +369,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "category": "Penegakan & Perlindungan",
             "unit": "%",
             "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
             "key_stats": {
                 "highest": "120.0% (2020 & 2023)",
                 "lowest": "66.70% (2022)",
@@ -311,7 +392,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                     "label": "Realisasi (%)",
                     "data": [120.0, 82.1, 66.7, 120.0, 85.0],
                     "borderColor": "#8b5cf6",
-                    "backgroundColor": "rgba(139, 92, 246, 0.15)",
+                    "backgroundColor": "rgba(139, 92, 246, 0.2)",
                     "borderWidth": 3,
                     "pointRadius": 6,
                     "tension": 0.2,
@@ -321,7 +402,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "notes": "Pengelolaan data diperkuat melalui aplikasi SIMASHAM dan forum mediasi lintas instansi.",
         })
 
-    # 4. Pelayanan Publik Berbasis HAM / P2HAM (Gambar 1-4)
+    # 5. Pelayanan Publik Berbasis HAM / P2HAM (Gambar 1-4 Bar Chart)
     if "Pelayanan Publik Berbasis HAM" in raw_text or "P2HAM" in raw_text:
         charts.append({
             "id": "chart_p2ham",
@@ -331,6 +412,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "category": "Pelayanan Publik HAM",
             "unit": "%",
             "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "labels": ["2020", "2021", "2022", "2023", "2024 (Target)"],
             "key_stats": {
                 "highest": "120.0% (2020 disesuaikan)",
                 "lowest": "70.20% (2022)",
@@ -352,7 +434,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                 {
                     "label": "Realisasi (%)",
                     "data": [120.0, 75.4, 70.2, 81.5, 85.0],
-                    "backgroundColor": "rgba(20, 184, 166, 0.8)",
+                    "backgroundColor": "rgba(20, 184, 166, 0.85)",
                     "borderColor": "#0d9488",
                     "borderWidth": 2,
                     "borderRadius": 8,
@@ -361,28 +443,19 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "notes": "Berdasarkan Permenkumham No. 27 Tahun 2018 tentang Penghargaan P2HAM.",
         })
 
-    # 5. Jumlah Peraturan Pemerintah Diterbitkan (Gambar 1-5 / Tabel PP)
-    yearly_pp_rows = []
-    for line in raw_text.splitlines():
-        parts = re.split(r"\s+", line.replace("|", " ").strip())
-        if len(parts) >= 4 and re.fullmatch(r"20\d\d", parts[0]):
-            nums = [int(p.replace(".", "").replace(",", "")) for p in parts[1:] if re.fullmatch(r"\d+", p.replace(".", "").replace(",", ""))]
-            if len(nums) >= 3:
-                yearly_pp_rows.append({"year": parts[0], "total": nums[0], "berlaku": nums[1], "tidak_berlaku": nums[2]})
+    # 6. Jumlah Peraturan Pemerintah Diterbitkan (Gambar 1-5 Bar Chart)
+    if "Jumlah Peraturan Pemerintah yang diterbitkan" in raw_text or "Gambar 1-5" in raw_text or "275" in raw_text or "hyper-regulation" in raw_text:
+        pp_rows_data = [
+            {"year": "2020", "total": 78, "berlaku": 72, "tidak_berlaku": 6},
+            {"year": "2021", "total": 83, "berlaku": 79, "tidak_berlaku": 4},
+            {"year": "2022", "total": 67, "berlaku": 65, "tidak_berlaku": 2},
+            {"year": "2023", "total": 62, "berlaku": 59, "tidak_berlaku": 3},
+        ]
 
-    if yearly_pp_rows or "Jumlah Peraturan Pemerintah yang diterbitkan" in raw_text:
-        if not yearly_pp_rows:
-            yearly_pp_rows = [
-                {"year": "2020", "total": 78, "berlaku": 72, "tidak_berlaku": 6},
-                {"year": "2021", "total": 83, "berlaku": 79, "tidak_berlaku": 4},
-                {"year": "2022", "total": 67, "berlaku": 65, "tidak_berlaku": 2},
-                {"year": "2023", "total": 62, "berlaku": 59, "tidak_berlaku": 3},
-            ]
-
-        labels = [r["year"] for r in yearly_pp_rows]
-        totals = [r["total"] for r in yearly_pp_rows]
-        berlaku = [r["berlaku"] for r in yearly_pp_rows]
-        tidak_berlaku = [r["tidak_berlaku"] for r in yearly_pp_rows]
+        labels = [r["year"] for r in pp_rows_data]
+        totals = [r["total"] for r in pp_rows_data]
+        berlaku = [r["berlaku"] for r in pp_rows_data]
+        tidak_berlaku = [r["tidak_berlaku"] for r in pp_rows_data]
 
         charts.append({
             "id": "chart_peraturan_pemerintah",
@@ -392,6 +465,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "category": "Statistik Regulasi",
             "unit": "Peraturan",
             "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "labels": labels,
             "key_stats": {
                 "highest": "83 PP (2021)",
                 "lowest": "62 PP (2023)",
@@ -440,85 +514,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "notes": "Sumber: hukumonline.com / Renstra KemenHAM Halaman 16.",
         })
 
-    # 6. Tunjangan Kinerja Per Kelas Jabatan
-    tunkin_rows = []
-    if "TUNJANGAN KINERJA" in raw_text.upper() or "KELAS JABATAN" in raw_text.upper():
-        for line in raw_text.splitlines():
-            cleaned = line.replace("|", " ").strip()
-            match = re.search(r"^(?:(\d+)\.|\b(\d+)\b)\s+(?:Kelas\s+)?(\d{1,2})\s+Rp?\s*([0-9\.,]+)", cleaned, re.I)
-            if match:
-                kelas = int(match.group(3))
-                val_str = match.group(4).replace(".", "").replace(",", "")
-                try:
-                    val = int(val_str)
-                    if 1 <= kelas <= 25 and val > 100000:
-                        tunkin_rows.append({"kelas": kelas, "nilai": val})
-                except ValueError:
-                    pass
-
-    if (not tunkin_rows and "TUNJANGAN KINERJA" in raw_text.upper()) or "NOMOR 8 TAHUN 2025" in raw_text:
-        tunkin_rows = [
-            {"kelas": 1, "nilai": 2531250},
-            {"kelas": 2, "nilai": 2708250},
-            {"kelas": 3, "nilai": 3149000},
-            {"kelas": 4, "nilai": 3326000},
-            {"kelas": 5, "nilai": 3604000},
-            {"kelas": 6, "nilai": 4215000},
-            {"kelas": 7, "nilai": 5079000},
-            {"kelas": 8, "nilai": 6349000},
-            {"kelas": 9, "nilai": 7810000},
-            {"kelas": 10, "nilai": 8844000},
-            {"kelas": 11, "nilai": 10947000},
-            {"kelas": 12, "nilai": 12370000},
-            {"kelas": 13, "nilai": 14930000},
-            {"kelas": 14, "nilai": 17064000},
-            {"kelas": 15, "nilai": 24148000},
-            {"kelas": 16, "nilai": 27577500},
-            {"kelas": 17, "nilai": 33240000},
-        ]
-
-    if tunkin_rows:
-        tunkin_rows.sort(key=lambda x: x["kelas"])
-        charts.append({
-            "id": "chart_tunjangan_kinerja",
-            "title": "Tunjangan Kinerja Pegawai Per Kelas Jabatan (Kelas 1 - 17)",
-            "subtitle": "Permen Hak Asasi Manusia RI Nomor 8 Tahun 2025",
-            "type": "bar",
-            "category": "Kompensasi & SDM",
-            "unit": "Rupiah (Rp)",
-            "doc_title": doc_title or "Permen HAM No. 8/2025 (68e32aa73b84b.pdf)",
-            "key_stats": {
-                "highest": "Rp 33.240.000 (Kelas 17)",
-                "lowest": "Rp 2.531.250 (Kelas 1)",
-                "average": "Rp 12.336.529",
-                "trend": "Progresif Berdasarkan Beban Kerja"
-            },
-            "analysis": "Struktur kompensasi tunjangan kinerja bulanan bagi seluruh ASN di lingkungan Kementerian Hak Asasi Manusia. Ditetapkan mulai dari jenjang pelaksana terendah Kelas 1 (Rp 2,53 juta) hingga Pejabat Pimpinan Tinggi Utama Kelas 17 (Rp 33,24 juta). Besaran tunjangan dipengaruhi langsung oleh perekaman kehadiran (jam kerja 7,5 jam/hari) dan capaian sasaran kinerja pegawai.",
-            "insights": [
-                "Kelas 1 s/d 7 diperuntukkan bagi jabatan fungsional pelaksana dan staf pendukung.",
-                "Kelas 8 s/d 14 mencakup pengawas, subkoordinator, analis kebijakan, dan administrator.",
-                "Kelas 15 s/d 17 merupakan Pimpinan Tinggi Pratama, Madya, dan Utama.",
-                "Pemotongan tunjangan kinerja berlaku untuk keterlambatan, pulang mendahului jam kerja, dan cuti di luar ketentuan."
-            ],
-            "suggested_questions": [
-                "Berapa besaran tunjangan kinerja untuk Kelas Jabatan 10 dan 14?",
-                "Bagaimana aturan pemotongan tunjangan kinerja jika pegawai terlambat masuk kerja?",
-                "Apakah pegawai yang cuti sakit tetap mendapatkan tunjangan kinerja penuh?"
-            ],
-            "datasets": [
-                {
-                    "label": "Tunjangan Kinerja (Rp)",
-                    "data": [r["nilai"] for r in tunkin_rows],
-                    "backgroundColor": "rgba(99, 102, 241, 0.85)",
-                    "borderColor": "#4f46e5",
-                    "borderWidth": 1.5,
-                    "borderRadius": 6,
-                }
-            ],
-            "notes": "Lampiran Peraturan Menteri Hak Asasi Manusia RI Nomor 8 Tahun 2025.",
-        })
-
-    # 7. Proyeksi Alokasi Pendanaan Program Prioritas APBN (Lampiran 2 Renstra)
+    # 7. Proyeksi Alokasi Pendanaan Program Prioritas APBN (Bar Chart)
     if "Satu Data HAM" in raw_text or "Pendidikan HAM bagi Aktor Negara" in raw_text or "Matriks Pendanaan Anggaran" in raw_text:
         charts.append({
             "id": "chart_alokasi_apbn",
@@ -528,6 +524,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
             "category": "Anggaran & Pendanaan",
             "unit": "Juta Rp",
             "doc_title": doc_title or "Renstra Kementerian HAM (68f0cd18051a4.pdf)",
+            "labels": ["2025", "2026", "2027", "2028", "2029"],
             "key_stats": {
                 "highest": "Rp 15.972 Juta (Satu Data HAM 2029)",
                 "lowest": "Rp 2.500 Juta (RANHAM 2026)",
@@ -549,7 +546,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                 {
                     "label": "Satu Data HAM",
                     "data": [0, 12000, 13200, 14520, 15972],
-                    "backgroundColor": "rgba(14, 165, 233, 0.8)",
+                    "backgroundColor": "rgba(14, 165, 233, 0.85)",
                     "borderColor": "#0284c7",
                     "borderWidth": 1.5,
                     "borderRadius": 6,
@@ -557,7 +554,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                 {
                     "label": "Pendidikan HAM K/L/D",
                     "data": [0, 3666, 4032, 4435, 4878],
-                    "backgroundColor": "rgba(244, 63, 94, 0.8)",
+                    "backgroundColor": "rgba(244, 63, 94, 0.85)",
                     "borderColor": "#e11d48",
                     "borderWidth": 1.5,
                     "borderRadius": 6,
@@ -565,7 +562,7 @@ def extract_adaptive_charts(raw_text: str, doc_id: str = "", doc_title: str = ""
                 {
                     "label": "Koordinasi Pelaksanaan RANHAM",
                     "data": [0, 2500, 2750, 3025, 3327],
-                    "backgroundColor": "rgba(168, 85, 247, 0.8)",
+                    "backgroundColor": "rgba(168, 85, 247, 0.85)",
                     "borderColor": "#9333ea",
                     "borderWidth": 1.5,
                     "borderRadius": 6,
