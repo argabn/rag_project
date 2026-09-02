@@ -59,6 +59,15 @@ class Command(BaseCommand):
             if not text.strip():
                 continue
 
+            figures_meta = []
+            if f.suffix.lower() == ".pdf":
+                try:
+                    from ingestion.services.document_extractor import extract_pdf_figures
+                    extracted_figs = extract_pdf_figures(f, doc_id=f.name, doc_title=f.name)
+                    figures_meta = [{"id": fg["id"], "title": fg["title"], "page": fg["page"], "url": fg["image_url"]} for fg in extracted_figs]
+                except Exception as exc:
+                    self.stderr.write(self.style.WARNING(f"Ekstraksi gambar gagal untuk {f.name}: {exc}"))
+
             doc = upsert_raw_document(
                 RawDocument,
                 source_type="local",
@@ -66,7 +75,12 @@ class Command(BaseCommand):
                 external_id=str(f.relative_to(folder)),
                 title=f.name,
                 raw_content=text,
-                metadata={"file_path": str(f), "file_size": f.stat().st_size},
+                metadata={
+                    "file_path": str(f),
+                    "file_size": f.stat().st_size,
+                    "figures_count": len(figures_meta),
+                    "figures": figures_meta,
+                },
                 access_level=options["access_level"],
             )
 
@@ -78,3 +92,4 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"ingest_local selesai. Baru/update: {total_new}, tidak berubah: {total_skip}, error: {total_error}"
         ))
+
