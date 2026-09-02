@@ -305,9 +305,16 @@ class StatsView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+from ingestion.services.document_extractor import (
+    extract_pdf_figures,
+    extract_adaptive_charts,
+    extract_adaptive_tables,
+)
+
+
 class UploadDocumentsView(APIView):
     """
-    /api/upload/ - upload dokumen dari frontend dan langsung ingest + chunking.
+    /api/upload/ - upload dokumen dari frontend dan langsung ingest, ekstraksi grafik/gambar, + chunking.
     """
 
     authentication_classes = []
@@ -327,8 +334,41 @@ class UploadDocumentsView(APIView):
 
         for file_obj in files:
             try:
-                text = extract_text_from_upload(file_obj)
+                suffix = Path(file_obj.name).suffix.lower()
+                text = ""
+                figures_meta = []
+
+                if suffix == ".pdf":
+                    from pypdf import PdfReader
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                        file_bytes = file_obj.read()
+                        tmp.write(file_bytes)
+                        tmp_path = tmp.name
+                    try:
+                        reader = PdfReader(tmp_path)
+                        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+                        extracted_figs = extract_pdf_figures(tmp_path, doc_id=file_obj.name, doc_title=file_obj.name)
+                        figures_meta = [
+                            {
+                                "id": fg["id"],
+                                "title": fg["title"],
+                                "caption": fg["caption"],
+                                "page": fg["page"],
+                                "category": fg["category"],
+                                "image_url": fg["image_url"],
+                                "width": fg["width"],
+                                "height": fg["height"],
+                                "doc_title": fg["doc_title"],
+                            }
+                            for fg in extracted_figs
+                        ]
+                    finally:
+                        Path(tmp_path).unlink(missing_ok=True)
+                else:
+                    text = extract_text_from_upload(file_obj)
+
             except Exception as exc:
+                logger.exception("Gagal membaca file upload %s", file_obj.name)
                 errors.append({"name": file_obj.name, "error": str(exc)})
                 continue
 
@@ -343,12 +383,32 @@ class UploadDocumentsView(APIView):
                 external_id=file_obj.name,
                 title=file_obj.name,
                 raw_content=text,
-                metadata={"file_name": file_obj.name, "file_size": file_obj.size},
+                metadata={
+                    "file_name": file_obj.name,
+                    "file_size": getattr(file_obj, "size", len(text)),
+                    "figures_count": len(figures_meta),
+                    "figures": figures_meta,
+                },
                 access_level=access_level,
             )
 
             if doc is None:
-                skipped.append(file_obj.name)
+                # Update metadata if document already exists
+                existing = RawDocument.objects.filter(
+                    source_type="local", source_name=source_name, external_id=file_obj.name, is_active=True
+                ).first()
+                if existing:
+                    existing.raw_content = text
+                    existing.metadata = {
+                        "file_name": file_obj.name,
+                        "file_size": getattr(file_obj, "size", len(text)),
+                        "figures_count": len(figures_meta),
+                        "figures": figures_meta,
+                    }
+                    existing.save()
+                    ingested.append(file_obj.name)
+                else:
+                    skipped.append(file_obj.name)
                 continue
 
             try:
@@ -367,28 +427,109 @@ class UploadDocumentsView(APIView):
 
 class DocumentStatsView(APIView):
     """
-    /api/document-stats/ - ekstraksi tabel statistik dari isi dokumen,
-    misalnya tahun/total/berlaku/tidak berlaku untuk PP atau tabel numerik.
+    /api/document-stats/ - ekstraksi komprehensif seluruh grafik, gambar diagram,
+    dan data tabel statistik dari seluruh dokumen secara adaptif.
     """
 
     authentication_classes = []
     permission_classes = []
 
     def get(self, request):
-        docs = []
-        for doc in RawDocument.objects.filter(is_active=True).order_by("-created_at"):
-            tables = extract_document_tables(doc.raw_content or "")
-            if tables:
-                primary = tables[0]
-                docs.append({
-                    "title": doc.title or doc.external_id,
-                    "source_name": doc.source_name,
-                    "source_type": doc.source_type,
-                    "data": primary["data"],
-                    "tables": tables,
-                })
+        doc_filter = request.query_params.get("doc_title", "").strip()
+
+        all_charts = []
+        all_figures = []
+        all_tables = []
+        docs_summary = []
+        seen_chart_ids = set()
+        seen_fig_urls = set()
+
+        # Baca seluruh RawDocument aktif
+        qs = RawDocument.objects.filter(is_active=True).order_by("-created_at")
+        for doc in qs:
+            doc_title = doc.title or doc.external_id or "Dokumen"
+            docs_summary.append({
+                "id": str(doc.id),
+                "title": doc_title,
+                "source_name": doc.source_name,
+                "source_type": doc.source_type,
+                "content_length": len(doc.raw_content or ""),
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            })
+
+            # Jika ada filter judul dokumen
+            if doc_filter and doc_filter.lower() not in doc_title.lower() and doc_filter != str(doc.id):
+                continue
+
+            # 1. Ekstraksi visual figures dari metadata
+            figures = doc.metadata.get("figures", []) if isinstance(doc.metadata, dict) else []
+            for fg in figures:
+                url = fg.get("url") or fg.get("image_url")
+                dedup_key = f"{doc_title}_{fg.get('page', 1)}_{fg.get('title', '')}"
+                if url and dedup_key not in seen_fig_urls:
+                    seen_fig_urls.add(dedup_key)
+                    all_figures.append({
+                        "id": fg.get("id", ""),
+                        "title": fg.get("title") or fg.get("caption") or f"Gambar Halaman {fg.get('page', 1)}",
+                        "caption": fg.get("caption") or fg.get("title") or "",
+                        "page": fg.get("page", 1),
+                        "category": fg.get("category", "Grafik & Kinerja"),
+                        "image_url": url,
+                        "doc_title": doc_title,
+                    })
+
+            # 2. Ekstraksi adaptive charts (Chart.js configs)
+            charts = extract_adaptive_charts(doc.raw_content or "", doc_id=str(doc.id), doc_title=doc_title)
+            for ch in charts:
+                if ch["id"] not in seen_chart_ids:
+                    seen_chart_ids.add(ch["id"])
+                    all_charts.append(ch)
+
+            # 3. Ekstraksi adaptive tables
+            tables = extract_adaptive_tables(doc.raw_content or "", doc_id=str(doc.id), doc_title=doc_title)
+            for tbl in tables:
+                tbl_key = f"{doc_title}_{tbl['id']}"
+                if tbl_key not in seen_chart_ids:
+                    seen_chart_ids.add(tbl_key)
+                    all_tables.append(tbl)
+
+        # Fallback: scan disk folder media/extracted_figures hanya jika all_figures kosong
+        if not all_figures:
+            figures_dir = Path(settings.MEDIA_ROOT) / "extracted_figures"
+            if figures_dir.exists():
+                for fpath in sorted(figures_dir.glob("*.*")):
+                    if fpath.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                        img_url = f"{settings.MEDIA_URL}extracted_figures/{fpath.name}"
+                        m = re.search(r"p(\d+)_", fpath.name)
+                        page_num = int(m.group(1)) if m else 1
+                        dedup_key = f"disk_p{page_num}_{fpath.stem}"
+                        if dedup_key not in seen_fig_urls:
+                            seen_fig_urls.add(dedup_key)
+                            all_figures.append({
+                                "id": fpath.stem,
+                                "title": f"Gambar / Grafik (Halaman {page_num})",
+                                "caption": fpath.stem.replace("_", " "),
+                                "page": page_num,
+                                "category": "Grafik & Visual Dokumen",
+                                "image_url": img_url,
+                                "doc_title": "Arsip Dokumen Kementerian HAM",
+                            })
+
+
+        # Urutkan figures berdasarkan nomor halaman
+        all_figures.sort(key=lambda x: x.get("page", 1))
 
         return Response({
-            "docs": docs,
-            "count": len(docs),
+            "status": "ok",
+            "charts": all_charts,
+            "figures": all_figures,
+            "tables": all_tables,
+            "documents": docs_summary,
+            "metrics": {
+                "total_documents": len(docs_summary),
+                "total_charts": len(all_charts),
+                "total_figures": len(all_figures),
+                "total_tables": len(all_tables),
+            },
         }, status=status.HTTP_200_OK)
+
