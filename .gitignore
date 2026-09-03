@@ -6,3 +6,7 @@ env/
 .venv/
 *.sqlite3
 .DS_Store
+dokumen/
+media/extracted_figures/
+logs/*.log
+logs/app.log

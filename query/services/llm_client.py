@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    _client = Groq(api_key=settings.GROQ_API_KEY, timeout=20, max_retries=1)
+    _client = Groq(api_key=settings.GROQ_API_KEY, timeout=10, max_retries=0)
 except Exception:  # pragma: no cover - fallback when config is invalid
     _client = None
 

@@ -12,3 +12,4 @@ python-docx
 pymysql
 sentry-sdk
 django-environ
+pdfplumber>=0.11.0
