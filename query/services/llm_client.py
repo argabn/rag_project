@@ -10,8 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    _client = Groq(api_key=settings.GROQ_API_KEY, timeout=10, max_retries=0)
+    _client = Groq(
+        api_key=settings.GROQ_API_KEY,
+        timeout=getattr(settings, "GROQ_TIMEOUT", 30),
+        max_retries=getattr(settings, "GROQ_MAX_RETRIES", 1),
+    )
 except Exception:  # pragma: no cover - fallback when config is invalid
+    logger.exception("Failed to initialize Groq client")
     _client = None
 
 

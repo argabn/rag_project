@@ -317,6 +317,8 @@ class UploadDocumentsView(APIView):
                     existing.raw_content = text
                     existing.metadata = doc_metadata
                     existing.save()
+                    if not existing.chunks.exists():
+                        process_document(existing)
                     ingested.append(file_obj.name)
                 else:
                     skipped.append(file_obj.name)
@@ -326,6 +328,7 @@ class UploadDocumentsView(APIView):
                 process_document(doc)
                 ingested.append(file_obj.name)
             except Exception as exc:
+                logger.exception("Gagal chunking dokumen %s", file_obj.name)
                 errors.append({"name": file_obj.name, "error": f"Gagal chunking: {exc}"})
 
         return Response({
