@@ -60,13 +60,48 @@ class Command(BaseCommand):
                 continue
 
             figures_meta = []
+            tables_meta = []
+            charts_meta = []
             if f.suffix.lower() == ".pdf":
                 try:
-                    from ingestion.services.document_extractor import extract_pdf_figures
+                    from ingestion.services.document_extractor import (
+                        extract_pdf_figures,
+                        extract_adaptive_tables,
+                        extract_adaptive_charts,
+                    )
                     extracted_figs = extract_pdf_figures(f, doc_id=f.name, doc_title=f.name)
-                    figures_meta = [{"id": fg["id"], "title": fg["title"], "page": fg["page"], "url": fg["image_url"]} for fg in extracted_figs]
+                    figures_meta = [
+                        {
+                            "id": fg["id"],
+                            "title": fg["title"],
+                            "caption": fg["caption"],
+                            "page": fg["page"],
+                            "category": fg["category"],
+                            "image_url": fg["image_url"],
+                            "width": fg.get("width"),
+                            "height": fg.get("height"),
+                            "doc_title": fg.get("doc_title", f.name),
+                            "analysis": fg.get("analysis", ""),
+                            "insights": fg.get("insights", []),
+                            "suggested_questions": fg.get("suggested_questions", []),
+                        }
+                        for fg in extracted_figs
+                    ]
+                    tables_meta = extract_adaptive_tables(f, doc_id=f.name, doc_title=f.name)
+                    charts_meta = extract_adaptive_charts(f, doc_id=f.name, doc_title=f.name, tables=tables_meta)
                 except Exception as exc:
-                    self.stderr.write(self.style.WARNING(f"Ekstraksi gambar gagal untuk {f.name}: {exc}"))
+                    self.stderr.write(self.style.WARNING(f"Ekstraksi visual/tabel gagal untuk {f.name}: {exc}"))
+
+            doc_metadata = {
+                "file_path": str(f),
+                "file_size": f.stat().st_size,
+                "figures_count": len(figures_meta),
+                "figures": figures_meta,
+                "tables_count": len(tables_meta),
+                "tables": tables_meta,
+                "charts_count": len(charts_meta),
+                "charts": charts_meta,
+            }
 
             doc = upsert_raw_document(
                 RawDocument,
@@ -75,18 +110,19 @@ class Command(BaseCommand):
                 external_id=str(f.relative_to(folder)),
                 title=f.name,
                 raw_content=text,
-                metadata={
-                    "file_path": str(f),
-                    "file_size": f.stat().st_size,
-                    "figures_count": len(figures_meta),
-                    "figures": figures_meta,
-                },
+                metadata=doc_metadata,
                 access_level=options["access_level"],
             )
 
             if doc:
                 total_new += 1
             else:
+                existing = RawDocument.objects.filter(
+                    source_type="local", source_name=options["source_name"], external_id=str(f.relative_to(folder)), is_active=True
+                ).first()
+                if existing:
+                    existing.metadata = doc_metadata
+                    existing.save(update_fields=["metadata"])
                 total_skip += 1
 
         self.stdout.write(self.style.SUCCESS(

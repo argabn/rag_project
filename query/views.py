@@ -51,115 +51,9 @@ def extract_text_from_upload(file_obj):
     raise ValueError(f"Format tidak didukung: {suffix}")
 
 
-def parse_yearly_document_stats(raw_text: str):
-    cleaned_lines = []
-    for line in raw_text.splitlines():
-        stripped = re.sub(r"\s+", " ", line).strip()
-        if stripped:
-            cleaned_lines.append(stripped)
-
-    rows = []
-    for line in cleaned_lines:
-        line_no_pipe = line.replace("|", " ")
-        parts = re.split(r"\s+", line_no_pipe)
-        if not parts:
-            continue
-
-        first = parts[0].strip()
-        if not re.fullmatch(r"\d{4}", first):
-            continue
-
-        values = []
-        for token in parts[1:]:
-            token = token.strip().rstrip(".")
-            if token.lower() in {"tahun", "total", "berlaku", "tidak", "berlaku", "tidakberlaku"}:
-                continue
-            cleaned_token = token.replace(".", "").replace(",", "")
-            if re.fullmatch(r"\d+", cleaned_token):
-                values.append(int(cleaned_token))
-
-        if len(values) >= 3:
-            rows.append({
-                "year": int(first),
-                "total": values[0],
-                "berlaku": values[1],
-                "tidak_berlaku": values[2],
-            })
-
-    if not rows:
-        return []
-
-    return rows
-
-
-def parse_compensation_table(raw_text: str):
-    text = raw_text.replace("\r", "\n")
-    header_keywords = ["NO KELAS JABATAN TUNJANGAN KINERJA", "KELAS JABATAN", "TUNJANGAN KINERJA PER KELAS JABATAN"]
-    header_idx = None
-    for keyword in header_keywords:
-        idx = text.upper().find(keyword.upper())
-        if idx != -1:
-            header_idx = idx
-            break
-
-    if header_idx is None:
-        return []
-
-    start = text[header_idx:]
-    lines = [re.sub(r"\s+", " ", line).strip() for line in start.splitlines() if re.sub(r"\s+", " ", line).strip()]
-
-    rows = []
-    for line in lines[1:]:
-        normalized = line.replace("|", " ")
-        if not re.search(r"\d", normalized):
-            continue
-
-        match = re.search(r"^(?:\d+\.|\d+)\s+(\d+)\s+Rp?\s*([0-9\.,]+)(?:,\d+)?", normalized, re.I)
-        if not match:
-            continue
-
-        row_no = int(match.group(1))
-        amount_tokens = match.group(2).replace(".", "").replace(",", ".")
-        try:
-            amount = int(float(amount_tokens))
-        except ValueError:
-            continue
-
-        if amount <= 0:
-            continue
-
-        rows.append({
-            "no": row_no,
-            "kelas_jabatan": int(match.group(1)),
-            "nilai": f"Rp{int(amount):,}".replace(",", ".").replace(".", ",") if False else None,
-            "nilai_raw": amount,
-        })
-
-    if not rows:
-        return []
-
-    return rows
-
-
 def extract_document_tables(raw_text: str):
-    tables = []
-    yearly = parse_yearly_document_stats(raw_text)
-    if yearly:
-        tables.append({
-            "title": "Jumlah PP yang Diterbitkan",
-            "type": "yearly",
-            "data": yearly,
-        })
-
-    comp = parse_compensation_table(raw_text)
-    if comp:
-        tables.append({
-            "title": "Tunjangan Kinerja Per Kelas Jabatan",
-            "type": "compensation",
-            "data": comp,
-        })
-
-    return tables
+    """Ekstraksi tabel terstruktur dari teks dokumen menggunakan pipeline ekstraksi adaptif generik."""
+    return extract_adaptive_tables(raw_text)
 
 logger = logging.getLogger(__name__)
 
@@ -365,16 +259,23 @@ class UploadDocumentsView(APIView):
                                 "page": fg["page"],
                                 "category": fg["category"],
                                 "image_url": fg["image_url"],
-                                "width": fg["width"],
-                                "height": fg["height"],
-                                "doc_title": fg["doc_title"],
+                                "width": fg.get("width"),
+                                "height": fg.get("height"),
+                                "doc_title": fg.get("doc_title", file_obj.name),
+                                "analysis": fg.get("analysis", ""),
+                                "insights": fg.get("insights", []),
+                                "suggested_questions": fg.get("suggested_questions", []),
                             }
                             for fg in extracted_figs
                         ]
+                        tables_meta = extract_adaptive_tables(tmp_path, doc_id=file_obj.name, doc_title=file_obj.name)
+                        charts_meta = extract_adaptive_charts(tmp_path, doc_id=file_obj.name, doc_title=file_obj.name, tables=tables_meta)
                     finally:
                         Path(tmp_path).unlink(missing_ok=True)
                 else:
                     text = extract_text_from_upload(file_obj)
+                    tables_meta = extract_adaptive_tables(text, doc_id=file_obj.name, doc_title=file_obj.name)
+                    charts_meta = extract_adaptive_charts(text, doc_id=file_obj.name, doc_title=file_obj.name, tables=tables_meta)
 
             except Exception as exc:
                 logger.exception("Gagal membaca file upload %s", file_obj.name)
@@ -385,6 +286,17 @@ class UploadDocumentsView(APIView):
                 skipped.append(file_obj.name)
                 continue
 
+            doc_metadata = {
+                "file_name": file_obj.name,
+                "file_size": getattr(file_obj, "size", len(text)),
+                "figures_count": len(figures_meta),
+                "figures": figures_meta,
+                "tables_count": len(tables_meta),
+                "tables": tables_meta,
+                "charts_count": len(charts_meta),
+                "charts": charts_meta,
+            }
+
             doc = upsert_raw_document(
                 RawDocument,
                 source_type="local",
@@ -392,12 +304,7 @@ class UploadDocumentsView(APIView):
                 external_id=file_obj.name,
                 title=file_obj.name,
                 raw_content=text,
-                metadata={
-                    "file_name": file_obj.name,
-                    "file_size": getattr(file_obj, "size", len(text)),
-                    "figures_count": len(figures_meta),
-                    "figures": figures_meta,
-                },
+                metadata=doc_metadata,
                 access_level=access_level,
             )
 
@@ -408,12 +315,7 @@ class UploadDocumentsView(APIView):
                 ).first()
                 if existing:
                     existing.raw_content = text
-                    existing.metadata = {
-                        "file_name": file_obj.name,
-                        "file_size": getattr(file_obj, "size", len(text)),
-                        "figures_count": len(figures_meta),
-                        "figures": figures_meta,
-                    }
+                    existing.metadata = doc_metadata
                     existing.save()
                     ingested.append(file_obj.name)
                 else:
@@ -451,6 +353,7 @@ class DocumentStatsView(APIView):
         all_tables = []
         docs_summary = []
         seen_chart_ids = set()
+        seen_tbl_ids = set()
         seen_fig_urls = set()
 
         # Baca seluruh RawDocument aktif
@@ -482,25 +385,44 @@ class DocumentStatsView(APIView):
                         "title": fg.get("title") or fg.get("caption") or f"Gambar Halaman {fg.get('page', 1)}",
                         "caption": fg.get("caption") or fg.get("title") or "",
                         "page": fg.get("page", 1),
-                        "category": fg.get("category", "Grafik & Kinerja"),
+                        "category": fg.get("category", "Visual Dokumen"),
                         "image_url": url,
                         "doc_title": doc_title,
+                        "analysis": fg.get("analysis", ""),
+                        "insights": fg.get("insights", []),
+                        "suggested_questions": fg.get("suggested_questions", []),
                     })
 
-            # 2. Ekstraksi adaptive charts (Chart.js configs)
-            charts = extract_adaptive_charts(doc.raw_content or "", doc_id=str(doc.id), doc_title=doc_title)
-            for ch in charts:
-                if ch["id"] not in seen_chart_ids:
-                    seen_chart_ids.add(ch["id"])
-                    all_charts.append(ch)
+            # 2. Ekstraksi adaptive tables (dari metadata jika ada, atau on-the-fly hanya jika ada file PDF lokal)
+            tables = []
+            if isinstance(doc.metadata, dict) and doc.metadata.get("tables"):
+                tables = doc.metadata["tables"]
+            else:
+                # On-the-fly hanya jika ada file PDF lokal yang valid (bukan raw text panjang)
+                fp = (doc.metadata or {}).get("file_path", "")
+                if fp and Path(fp).exists() and fp.endswith(".pdf"):
+                    tables = extract_adaptive_tables(fp, doc_id=str(doc.id), doc_title=doc_title, use_llm=False)
 
-            # 3. Ekstraksi adaptive tables
-            tables = extract_adaptive_tables(doc.raw_content or "", doc_id=str(doc.id), doc_title=doc_title)
             for tbl in tables:
-                tbl_key = f"{doc_title}_{tbl['id']}"
-                if tbl_key not in seen_chart_ids:
-                    seen_chart_ids.add(tbl_key)
+                tbl_key = f"{doc_title}_{tbl.get('id', '')}"
+                if tbl_key not in seen_tbl_ids:
+                    seen_tbl_ids.add(tbl_key)
                     all_tables.append(tbl)
+
+            # 3. Ekstraksi adaptive charts (Chart.js configs)
+            charts = []
+            if isinstance(doc.metadata, dict) and doc.metadata.get("charts"):
+                charts = doc.metadata["charts"]
+            else:
+                fp = (doc.metadata or {}).get("file_path", "")
+                if fp and Path(fp).exists() and fp.endswith(".pdf"):
+                    charts = extract_adaptive_charts(fp, doc_id=str(doc.id), doc_title=doc_title, tables=tables, use_llm=False)
+
+            for ch in charts:
+                ch_key = f"{doc_title}_{ch.get('id', '')}"
+                if ch_key not in seen_chart_ids:
+                    seen_chart_ids.add(ch_key)
+                    all_charts.append(ch)
 
         # Fallback: scan disk folder media/extracted_figures hanya jika all_figures kosong
         if not all_figures:
