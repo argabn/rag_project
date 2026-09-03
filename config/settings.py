@@ -186,6 +186,8 @@ EXTERNAL_EMBEDDING_API_KEY = env("EXTERNAL_EMBEDDING_API_KEY", default="")
 # LLM configuration
 # -------------------------------------------------------------------
 GROQ_API_KEY = env("GROQ_API_KEY", default="")
+GROQ_TIMEOUT = env.int("GROQ_TIMEOUT", default=30)
+GROQ_MAX_RETRIES = env.int("GROQ_MAX_RETRIES", default=1)
 
 # -------------------------------------------------------------------
 # External API tokens (integrator)

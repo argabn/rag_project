@@ -256,8 +256,12 @@ Hanya kembalikan objek JSON tanpa formatting markdown di luar JSON."""
         insights = [str(x).strip() for x in parsed.get("insights", []) if str(x).strip()] or fallback_insights
         questions = [str(x).strip() for x in parsed.get("suggested_questions", []) if str(x).strip()] or fallback_questions
         return analysis, insights, questions
-    except Exception as exc:
-        logger.debug("LLM analysis generation fallback for %s: %s", title, exc)
+    except Exception:
+        logger.exception(
+            "LLM analysis generation failed; using fallback for title=%r context_type=%r",
+            title,
+            context_type,
+        )
         return fallback_analysis, fallback_insights, fallback_questions
 
 
