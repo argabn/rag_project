@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import re
+import time
 import uuid
 from pathlib import Path
 from PIL import Image
@@ -203,6 +204,7 @@ def _generate_llm_analysis(
     fallback_analysis: str = "",
     fallback_insights: list[str] | None = None,
     fallback_questions: list[str] | None = None,
+    delay_after: float = 0,
 ) -> tuple[str, list[str], list[str]]:
     """Memanggil LLM secara dinamis untuk analisis, wawasan, dan pertanyaan dengan fallback generik netral."""
     fallback_insights = fallback_insights or [
@@ -218,6 +220,48 @@ def _generate_llm_analysis(
 
     if not getattr(settings, "GROQ_API_KEY", None):
         return fallback_analysis, fallback_insights, fallback_questions
+
+
+def _generate_llm_analysis_batch(items: list[dict], doc_title: str = "", batch_size: int = 8):
+    """Generate analyses in JSON-array batches, preserving per-item fallbacks."""
+    from query.services.llm_client import generate_answer
+
+    results = []
+    for start in range(0, len(items), batch_size):
+        batch = items[start:start + batch_size]
+        prompt_items = [
+            {"index": index, "title": item["title"], "context_type": item["context_type"], "data": item["data_summary"]}
+            for index, item in enumerate(batch)
+        ]
+        prompt = (
+            f'Analisis item berikut dari dokumen "{doc_title or "Dokumen"}". '
+            "Kembalikan JSON array valid dengan satu objek untuk setiap item, urutan sama persis. "
+            'Setiap objek wajib memiliki analysis, insights (array), dan suggested_questions (array). '
+            f"Item: {json.dumps(prompt_items, ensure_ascii=False)}"
+        )
+        try:
+            raw = generate_answer([
+                {"role": "system", "content": "Anda analis dokumen. Hanya kembalikan JSON array valid."},
+                {"role": "user", "content": prompt},
+            ], max_tokens=1024)
+            parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.I))
+            if not isinstance(parsed, list) or len(parsed) != len(batch):
+                raise ValueError(f"batch response length mismatch: expected {len(batch)}, got {len(parsed) if isinstance(parsed, list) else 'non-array'}")
+            for item, value in zip(batch, parsed):
+                results.append((
+                    str(value.get("analysis", "")).strip() or item["fallback_analysis"],
+                    [str(x).strip() for x in value.get("insights", []) if str(x).strip()] or item["fallback_insights"],
+                    [str(x).strip() for x in value.get("suggested_questions", []) if str(x).strip()] or item["fallback_questions"],
+                ))
+        except Exception:
+            logger.exception("LLM batch analysis failed; falling back per item (size=%d)", len(batch))
+            for item in batch:
+                results.append(_generate_llm_analysis(
+                    title=item["title"], context_type=item["context_type"], data_summary=item["data_summary"],
+                    doc_title=doc_title, fallback_analysis=item["fallback_analysis"],
+                    fallback_insights=item["fallback_insights"], fallback_questions=item["fallback_questions"],
+                ))
+    return results
 
     prompt = f"""Anda adalah asisten analis dokumen profesional. Analisis {context_type} berikut dari dokumen "{doc_title or 'Dokumen'}":
 Judul: {title}
@@ -247,7 +291,9 @@ Hanya kembalikan objek JSON tanpa formatting markdown di luar JSON."""
             {"role": "system", "content": "Anda adalah asisten ekstraksi data analitik. Selalu berikan output dalam format JSON valid."},
             {"role": "user", "content": prompt},
         ]
-        raw_resp = generate_answer(messages)
+        raw_resp = generate_answer(messages, max_tokens=1024)
+        if delay_after:
+            time.sleep(delay_after)
         cleaned = re.sub(r"^```(?:json)?\s*", "", raw_resp.strip(), flags=re.I)
         cleaned = re.sub(r"\s*```$", "", cleaned.strip())
         parsed = json.loads(cleaned)
@@ -265,7 +311,14 @@ Hanya kembalikan objek JSON tanpa formatting markdown di luar JSON."""
         return fallback_analysis, fallback_insights, fallback_questions
 
 
-def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = "", use_llm: bool = True) -> list[dict]:
+def extract_pdf_figures(
+    pdf_path_or_bytes,
+    doc_id: str = "",
+    doc_title: str = "",
+    use_llm: bool = True,
+    llm_limit: int | None = 10,
+    llm_delay: float = 0,
+) -> list[dict]:
     """
     Ekstraksi seluruh gambar, grafik, diagram, dan bagan asli dari PDF
     dengan klasifikasi kategori generik dan analisis berbasis konteks dokumen nyata.
@@ -347,18 +400,7 @@ def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = ""
                         f"Bagaimana hubungan visual ini dengan topik bahasan pada halaman {page_num}?",
                     ]
 
-                    if use_llm and len(figures) < 10:
-                        analysis, insights, suggested_questions = _generate_llm_analysis(
-                            title=caption,
-                            context_type="gambar diagram / visual",
-                            data_summary=f"Caption: {caption}\nHalaman: {page_num}\nKonteks Teks:\n{text[:500]}",
-                            doc_title=doc_title or file_stem,
-                            fallback_analysis=fallback_analysis,
-                            fallback_insights=fallback_insights,
-                            fallback_questions=fallback_questions,
-                        )
-                    else:
-                        analysis, insights, suggested_questions = fallback_analysis, fallback_insights, fallback_questions
+                    analysis, insights, suggested_questions = fallback_analysis, fallback_insights, fallback_questions
 
                     figures.append({
                         "id": f"{safe_title_slug}_p{page_num}_{img_idx}",
@@ -374,6 +416,8 @@ def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = ""
                         "analysis": analysis,
                         "insights": insights,
                         "suggested_questions": suggested_questions,
+                        "_llm_data": f"Caption: {caption}\nHalaman: {page_num}\nKonteks Teks:\n{text[:300]}",
+                        "_llm_enabled": use_llm and (llm_limit is None or len(figures) < llm_limit),
                     })
                 except Exception as exc:
                     logger.warning("Gagal ekstraksi gambar %s pada halaman %d: %s", getattr(img, "name", "unknown"), page_num, exc)
@@ -381,6 +425,17 @@ def extract_pdf_figures(pdf_path_or_bytes, doc_id: str = "", doc_title: str = ""
     except Exception as exc:
         logger.exception("Gagal membaca gambar dari PDF %s: %s", doc_title, exc)
 
+    pending = [figure for figure in figures if figure.pop("_llm_enabled", False)]
+    if pending:
+        analyses = _generate_llm_analysis_batch([
+            {"title": item["title"], "context_type": "gambar diagram / visual", "data_summary": item.pop("_llm_data"),
+             "fallback_analysis": item["analysis"], "fallback_insights": item["insights"], "fallback_questions": item["suggested_questions"]}
+            for item in pending
+        ], doc_title=doc_title, batch_size=8)
+        for item, (analysis, insights, questions) in zip(pending, analyses):
+            item.update(analysis=analysis, insights=insights, suggested_questions=questions)
+    for figure in figures:
+        figure.pop("_llm_data", None)
     return figures
 
 
@@ -396,7 +451,14 @@ def _is_valid_grid_table(rows: list[list[str]]) -> bool:
     return (valid_row_count / len(rows)) >= 0.5 and valid_row_count >= 2
 
 
-def extract_pdf_tables(pdf_path_or_bytes, doc_id: str = "", doc_title: str = "", use_llm: bool = True) -> list[dict]:
+def extract_pdf_tables(
+    pdf_path_or_bytes,
+    doc_id: str = "",
+    doc_title: str = "",
+    use_llm: bool = True,
+    llm_limit: int | None = 10,
+    llm_delay: float = 0,
+) -> list[dict]:
     """
     Mengekstrak seluruh tabel terstruktur secara dinamis dari file PDF menggunakan pdfplumber.
     """
@@ -486,7 +548,7 @@ def extract_pdf_tables(pdf_path_or_bytes, doc_id: str = "", doc_title: str = "",
                     category = _classify_category(title, " ".join(headers))
                     key_stats = _compute_table_key_stats(headers, data_rows)
 
-                    sample_rows_summary = "\n".join([f"Baris {i+1}: {', '.join(str(c) for c in r)}" for i, r in enumerate(data_rows[:6])])
+                    sample_rows_summary = "\n".join([f"Baris {i+1}: {', '.join(str(c) for c in r)}" for i, r in enumerate(data_rows[:4])])
                     data_summary = f"Kolom: {', '.join(headers)}\nTotal Baris: {len(data_rows)}\nContoh Data:\n{sample_rows_summary}"
 
                     fallback_analysis = f"Tabel data terstruktur dari dokumen {doc_label} memuat {len(data_rows)} baris data dan {len(headers)} kolom."
@@ -499,18 +561,7 @@ def extract_pdf_tables(pdf_path_or_bytes, doc_id: str = "", doc_title: str = "",
                         "Bagaimana perbandingan nilai antar baris pada tabel ini?",
                     ]
 
-                    if use_llm and table_counter <= 10:
-                        analysis, insights, suggested_questions = _generate_llm_analysis(
-                            title=title,
-                            context_type="tabel data terstruktur",
-                            data_summary=data_summary,
-                            doc_title=doc_label,
-                            fallback_analysis=fallback_analysis,
-                            fallback_insights=fallback_insights,
-                            fallback_questions=fallback_questions,
-                        )
-                    else:
-                        analysis, insights, suggested_questions = fallback_analysis, fallback_insights, fallback_questions
+                    analysis, insights, suggested_questions = fallback_analysis, fallback_insights, fallback_questions
 
                     tables.append({
                         "id": f"table_{table_counter}_{uuid.uuid4().hex[:6]}",
@@ -525,15 +576,35 @@ def extract_pdf_tables(pdf_path_or_bytes, doc_id: str = "", doc_title: str = "",
                         "analysis": analysis,
                         "insights": insights,
                         "suggested_questions": suggested_questions,
+                        "_llm_data": data_summary,
+                        "_llm_enabled": use_llm and (llm_limit is None or table_counter <= llm_limit),
                     })
 
     except Exception as exc:
         logger.exception("Gagal mengekstrak tabel dari PDF %s: %s", doc_title, exc)
 
+    pending = [table for table in tables if table.pop("_llm_enabled", False)]
+    if pending:
+        analyses = _generate_llm_analysis_batch([
+            {"title": item["title"], "context_type": "tabel data terstruktur", "data_summary": item.pop("_llm_data"),
+             "fallback_analysis": item["analysis"], "fallback_insights": item["insights"], "fallback_questions": item["suggested_questions"]}
+            for item in pending
+        ], doc_title=doc_label, batch_size=8)
+        for item, (analysis, insights, questions) in zip(pending, analyses):
+            item.update(analysis=analysis, insights=insights, suggested_questions=questions)
+    for table in tables:
+        table.pop("_llm_data", None)
     return tables
 
 
-def extract_text_tables(raw_text: str, doc_id: str = "", doc_title: str = "", use_llm: bool = True) -> list[dict]:
+def extract_text_tables(
+    raw_text: str,
+    doc_id: str = "",
+    doc_title: str = "",
+    use_llm: bool = True,
+    llm_limit: int | None = 5,
+    llm_delay: float = 0,
+) -> list[dict]:
     """
     Fallback parser untuk mengekstrak tabel Markdown / baris berstruktur tabular dari teks mentah.
     """
@@ -594,7 +665,7 @@ def extract_text_tables(raw_text: str, doc_id: str = "", doc_title: str = "", us
         category = _classify_category(title, " ".join(headers))
         key_stats = _compute_table_key_stats(headers, data_rows)
 
-        sample_rows_summary = "\n".join([f"Baris {i+1}: {', '.join(str(c) for c in r)}" for i, r in enumerate(data_rows[:6])])
+        sample_rows_summary = "\n".join([f"Baris {i+1}: {', '.join(str(c) for c in r)}" for i, r in enumerate(data_rows[:4])])
         data_summary = f"Kolom: {', '.join(headers)}\nTotal Baris: {len(data_rows)}\nContoh Data:\n{sample_rows_summary}"
 
         fallback_analysis = f"Tabel data terstruktur dari dokumen {doc_label} memuat {len(data_rows)} baris data dan {len(headers)} kolom."
@@ -607,7 +678,7 @@ def extract_text_tables(raw_text: str, doc_id: str = "", doc_title: str = "", us
             "Bagaimana rincian perbandingan data pada tabel ini?",
         ]
 
-        if use_llm and b_idx < 5:
+        if use_llm and (llm_limit is None or b_idx < llm_limit):
             analysis, insights, suggested_questions = _generate_llm_analysis(
                 title=title,
                 context_type="tabel data",
@@ -616,6 +687,7 @@ def extract_text_tables(raw_text: str, doc_id: str = "", doc_title: str = "", us
                 fallback_analysis=fallback_analysis,
                 fallback_insights=fallback_insights,
                 fallback_questions=fallback_questions,
+                delay_after=llm_delay,
             )
         else:
             analysis, insights, suggested_questions = fallback_analysis, fallback_insights, fallback_questions
@@ -637,18 +709,45 @@ def extract_text_tables(raw_text: str, doc_id: str = "", doc_title: str = "", us
     return tables
 
 
-def extract_adaptive_tables(source_input, doc_id: str = "", doc_title: str = "", use_llm: bool = True) -> list[dict]:
+def extract_adaptive_tables(
+    source_input,
+    doc_id: str = "",
+    doc_title: str = "",
+    use_llm: bool = True,
+    llm_limit: int | None = 10,
+    llm_delay: float = 0,
+) -> list[dict]:
     """
     Fungsi antarmuka utama ekstraksi tabel adaptif.
     Menerima path file PDF, file bytes, atau string teks, dan menghasilkan skema JSON tabel standar.
     """
     if isinstance(source_input, (Path, io.BytesIO, bytes)):
-        return extract_pdf_tables(source_input, doc_id=doc_id, doc_title=doc_title, use_llm=use_llm)
+        return extract_pdf_tables(
+            source_input,
+            doc_id=doc_id,
+            doc_title=doc_title,
+            use_llm=use_llm,
+            llm_limit=llm_limit,
+            llm_delay=llm_delay,
+        )
 
     if isinstance(source_input, str):
         if "\n" not in source_input and len(source_input) < 300 and Path(source_input).exists() and Path(source_input).suffix.lower() == ".pdf":
-            return extract_pdf_tables(source_input, doc_id=doc_id, doc_title=doc_title, use_llm=use_llm)
-        return extract_text_tables(source_input, doc_id=doc_id, doc_title=doc_title, use_llm=use_llm)
+            return extract_pdf_tables(
+                source_input,
+                doc_id=doc_id,
+                doc_title=doc_title,
+                use_llm=use_llm,
+                llm_limit=llm_limit,
+                llm_delay=llm_delay,
+            )
+            return extract_text_tables(
+                source_input,
+                doc_id=doc_id,
+                doc_title=doc_title,
+                use_llm=use_llm,
+                llm_limit=llm_limit,
+            )
 
     return []
 

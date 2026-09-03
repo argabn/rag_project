@@ -2,6 +2,8 @@
 Embedder service: abstraksi supaya provider embedding (bge-m3, provider
 eksternal, dst.) bisa diganti tanpa mengubah command chunking/embedding.
 """
+import threading
+
 from django.conf import settings
 
 
@@ -49,10 +51,25 @@ class ExternalEmbedder(BaseEmbedder):
         return [item["embedding"] for item in data["data"]]
 
 
+_embedder_instance = None
+_embedder_lock = threading.Lock()
+
+
 def get_embedder() -> BaseEmbedder:
     provider = settings.EMBEDDING_PROVIDER
-    if provider == "bge-m3":
-        return BgeM3Embedder()
-    if provider == "external":
-        return ExternalEmbedder()
-    raise ValueError(f"Provider embedding tidak dikenal: {provider}")
+    global _embedder_instance
+
+    if _embedder_instance is not None:
+        return _embedder_instance
+
+    with _embedder_lock:
+        if _embedder_instance is not None:
+            return _embedder_instance
+        if provider == "bge-m3":
+            _embedder_instance = BgeM3Embedder()
+        elif provider == "external":
+            _embedder_instance = ExternalEmbedder()
+        else:
+            raise ValueError(f"Provider embedding tidak dikenal: {provider}")
+
+    return _embedder_instance
